@@ -58,6 +58,10 @@
   color: var(--vf-green);
 }
 
+.saveStatus[data-status="pending"] {
+  color: var(--vf-pink);
+}
+
 .saveStatus[data-status="error"] {
   color: var(--vf-red);
 }

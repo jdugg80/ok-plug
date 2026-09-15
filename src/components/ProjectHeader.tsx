@@ -33,10 +33,11 @@ export function ProjectHeader() {
       </div>
       <div className={styles.actions}>
         <span className={styles.saveStatus} data-status={saveStatus}>
+          {saveStatus === "pending" && "Saving soon…"}
           {saveStatus === "saving" && "Saving…"}
           {saveStatus === "saved" && "Saved"}
           {saveStatus === "error" && "Save failed"}
-          {saveStatus === "idle" && "Unsaved changes"}
+          {saveStatus === "idle" && "No changes"}
         </span>
         <button className="vf-btn vf-btn--primary" onClick={() => saveActiveProject()}>
           Save Project

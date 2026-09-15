@@ -1,104 +1,42 @@
-# Vibeforge
+# Autosave Patch
 
-AI Ad Designer Pipeline Node for O-Kay-Est Media. Generates ad creatives across 56+ formats from a single creative brief, with AI-assisted generation, review/approval workflow, and delivery to OKLaunch.
+## What changed and why
 
-## Pipeline Position
+**Bug found:** color fields save on every keystroke (native `onChange`),
+but the vibe/tone tag inputs only committed a tag to state when you
+pressed Enter. If you typed a tag and clicked "Save Project" without
+pressing Enter first, that tag never entered state at all — nothing to
+save. Not a save bug, an input-commit bug.
 
-```
-Unity Core  ──▶  Vibeforge  ──▶  OKLaunch
-(job source)     (AI ad designer)  (distribution)
-```
+**Fixes:**
+1. Tag inputs now also commit on blur (clicking away, e.g. to the Save
+   button), not just Enter.
+2. Real debounced autosave: any edit to the Brand Kit schedules a save
+   ~1.2 seconds after the last change. Editing again resets the timer,
+   so it fires when you pause, not once per keystroke. The manual "Save
+   Project" button still exists and still works for an immediate save.
+3. The header's status text now has a `"pending"` state ("Saving
+   soon…") between an edit and the autosave actually firing, so it's
+   clear a save is scheduled rather than lost.
 
-- **Unity Core** sends ad job requests (client, brief, formats)
-- **Vibeforge** generates creatives, Joe reviews/approves, exports assets
-- **OKLaunch** receives finished assets and runs them
+## Files (drop-in replacements)
 
-## Tech Stack
+- `src/store/project-store.ts`
+- `src/components/ProjectHeader.tsx`
+- `src/components/ProjectHeader.module.css`
+- `src/features/brand-kit/BrandKitPage.tsx`
 
-| Layer | Technology |
-|---|---|
-| Shell | Tauri v2 (Electron migration planned) |
-| Frontend | React 19 |
-| Language | TypeScript ~5.6 |
-| Bundler | Vite ^6.0 |
-| Backend | Rust (Edition 2021) |
-| AI | Claude (text + vision), image generation TBD |
+Just overwrite the existing files at those paths — no other files
+changed. `npx tsc -p tsconfig.json --noEmit` and `npm run build` both
+verified clean with these in place.
 
-## Getting Started
+## Worth testing
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (LTS recommended)
-- [Rust](https://www.rust-lang.org/tools/install) (with `cargo`)
-- [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/)
-
-### Install & Run
-
-```sh
-npm install
-npm run tauri dev
-```
-
-### Build
-
-```sh
-npm run tauri build
-```
-
-## Project Structure
-
-```
-ok-plug/
-├── src/                        # React frontend
-│   ├── App.tsx                 # Main application component
-│   ├── main.tsx                # React entry point
-│   └── styles.css              # Global styles
-├── src-tauri/                  # Rust / Tauri backend
-│   ├── src/
-│   │   ├── lib.rs              # Tauri app setup + commands
-│   │   └── main.rs             # Binary entry point
-│   ├── Cargo.toml              # Rust dependencies
-│   └── tauri.conf.json         # Tauri configuration
-├── docs/
-│   ├── vibeforge-blueprint-v2.md   # Full project blueprint
-│   └── format-catalog.ts           # Ad format catalog (57 entries)
-├── .opencode/
-│   └── command/
-│       └── integrate-format-catalog.md  # Integration command
-├── CHANGELOG.md
-├── PROJECT_TIMELINE.md
-└── package.json
-```
-
-## Blueprint
-
-See [`docs/vibeforge-blueprint-v2.md`](docs/vibeforge-blueprint-v2.md) for the full project blueprint including:
-
-- Integration contracts with Unity Core and OKLaunch
-- Module architecture (Job Intake, AI Creative Assistant, Template Engine, Render/Export, Review Queue, Delivery)
-- 12-step build sequence with definitions of done
-- Format catalog with 56+ ad specifications across 8 platforms
-
-## Open Decisions
-
-- Unity Core and OKLaunch actual schemas (blocks Step 11)
-- AI provider(s) for text + image generation
-- Video/motion formats for v1 (static-only acceptable first release)
-- Brand token palette (real O-Kay-Est Media vs. Vibeforge distinct)
-
-## Available Scripts
-
-| Script | Description |
-|---|---|
-| `npm run dev` | Start Vite dev server |
-| `npm run build` | TypeScript check + Vite build |
-| `npm run preview` | Preview production build |
-| `npm run tauri` | Run Tauri CLI commands |
-
-## Recommended IDE
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri Extension](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-
-## License
-
-Proprietary — O-Kay-Est Media
+1. Open the "Test" project from before.
+2. Add a color — confirm status goes to "Saving soon…" then "Saved"
+   within ~1-2 seconds, with no button click.
+3. Type a vibe tag and press Enter — same autosave behavior.
+4. Type a tone tag but click "Save Project" directly instead of
+   pressing Enter first — confirm the tag now still gets committed
+   (this is the blur fix).
+5. Close and reopen the project, confirm colors AND tags both persisted.

@@ -163,6 +163,17 @@ function TagEditor({ tags, placeholder, onAdd, onRemove }: TagEditorProps) {
             (e.target as HTMLInputElement).value = "";
           }
         }}
+        onBlur={(e) => {
+          // Commit on blur too — otherwise a typed-but-uncommitted tag
+          // is silently lost the moment focus moves elsewhere (e.g. to
+          // the Save button), which is exactly the kind of thing
+          // autosave is supposed to prevent.
+          const value = e.target.value;
+          if (value.trim()) {
+            onAdd(value);
+            e.target.value = "";
+          }
+        }}
       />
     </div>
   );

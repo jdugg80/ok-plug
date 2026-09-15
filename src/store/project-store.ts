@@ -1,12 +1,15 @@
 import { create } from "zustand";
 import type { VibeforgeProject, BrandKit, ProjectSummary } from "@/types/domain";
 
+const AUTOSAVE_DELAY_MS = 1200;
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+
 interface ProjectStoreState {
   activeProject: VibeforgeProject | null;
   activeBrandKit: BrandKit | null;
   recentProjects: ProjectSummary[];
   isLoading: boolean;
-  saveStatus: "idle" | "saving" | "saved" | "error";
+  saveStatus: "idle" | "pending" | "saving" | "saved" | "error";
   error: string | null;
 
   refreshRecentProjects: () => Promise<void>;
@@ -93,13 +96,25 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     if (!current) return;
     set({
       activeBrandKit: { ...current, ...partial, updatedAt: new Date().toISOString() },
-      saveStatus: "idle",
+      saveStatus: "pending",
     });
+    // Debounced autosave: fires ~1.2s after the last edit, so a pause
+    // in typing (not an explicit click) is what commits to disk. Every
+    // new edit resets the timer rather than stacking up separate saves.
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      autosaveTimer = null;
+      get().saveActiveProject();
+    }, AUTOSAVE_DELAY_MS);
   },
 
   saveActiveProject: async () => {
     const { activeProject, activeBrandKit } = get();
     if (!activeProject || !activeBrandKit) return;
+    if (autosaveTimer) {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = null;
+    }
     set({ saveStatus: "saving" });
     try {
       await window.vibeforge.saveProject(activeProject, activeBrandKit);
@@ -109,5 +124,11 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     }
   },
 
-  closeProject: () => set({ activeProject: null, activeBrandKit: null, saveStatus: "idle" }),
+  closeProject: () => {
+    if (autosaveTimer) {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = null;
+    }
+    set({ activeProject: null, activeBrandKit: null, saveStatus: "idle" });
+  },
 }));
