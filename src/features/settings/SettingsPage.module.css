@@ -1,0 +1,33 @@
+.warning {
+  font-size: 12px;
+  color: var(--vf-red);
+  background: rgba(255, 68, 51, 0.1);
+  border: 1px solid var(--vf-red);
+  border-radius: var(--vf-radius-md);
+  padding: 10px 14px;
+  line-height: 1.5;
+}
+
+.keyForm {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.keyInput {
+  flex: 1;
+  font-family: var(--vf-font-mono);
+}
+
+.error {
+  color: var(--vf-red);
+  font-size: 12px;
+  margin: 0;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--vf-text-faint);
+  margin: 0;
+  line-height: 1.5;
+}
