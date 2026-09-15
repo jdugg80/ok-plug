@@ -1,29 +1,43 @@
 {
-  "name": "ok-plug",
+  "name": "vibeforge",
+  "productName": "Vibeforge",
+  "description": "AI-assisted ad design pipeline node for O-Kay-Est Media — receives ad jobs from Unity Core, generates creative across platform formats, delivers to OKLaunch",
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "dist-electron/main/main.js",
+  "author": "O-Kay-Est Media LLC",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc -p tsconfig.json && tsc -p electron/tsconfig.build.json && node scripts/stamp-cjs.cjs && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "electron:dev": "npm run build && electron .",
+    "package": "npm run build && electron-builder"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^6.28.0",
+    "zustand": "^5.0.2",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2",
-    "@types/electron": "^1.4.38",
-    "@types/node": "^26.5.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^10.0.0",
+    "@types/node": "^22.10.1",
     "@vitejs/plugin-react": "^4.7.0",
-    "electron": "^44.3.0",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
     "typescript": "~5.6.2",
     "vite": "^6.0.3"
+  },
+  "build": {
+    "appId": "com.okayestmedia.vibeforge",
+    "productName": "Vibeforge",
+    "files": ["dist/**/*", "dist-electron/**/*"],
+    "win": { "target": "nsis", "icon": "resources/icons/icon.ico" },
+    "mac": { "target": "dmg", "icon": "resources/icons/icon.icns" },
+    "linux": { "target": "AppImage", "icon": "resources/icons/icon.png" }
   }
 }

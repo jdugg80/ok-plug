@@ -1,0 +1,63 @@
+.header {
+  height: 64px;
+  border-bottom: 1px solid var(--vf-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  flex-shrink: 0;
+}
+
+.noProject {
+  color: var(--vf-text-faint);
+  font-size: 13px;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--vf-radius-sm);
+  background: linear-gradient(135deg, var(--vf-pink), var(--vf-red));
+  display: grid;
+  place-items: center;
+  font-family: var(--vf-font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: #1a0410;
+  flex-shrink: 0;
+}
+
+.businessName {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.projectName {
+  font-size: 12px;
+  color: var(--vf-text-muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.saveStatus {
+  font-size: 12px;
+  color: var(--vf-text-muted);
+}
+
+.saveStatus[data-status="saved"] {
+  color: var(--vf-green);
+}
+
+.saveStatus[data-status="error"] {
+  color: var(--vf-red);
+}

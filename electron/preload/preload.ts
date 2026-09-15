@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { IpcChannels } from "../shared/ipc-channels";
 import type { AiKeyStatus } from "../main/services/secure-storage-service";
+import type { VibeforgeProject, BrandKit, ProjectSummary } from "../shared/types";
+import type { NewProjectInput, ProjectAndBrandKit } from "../main/services/project-service";
 
 /**
  * Exposed to the renderer via contextBridge.
@@ -20,6 +22,26 @@ const vibeforgeApi = {
 
   clearAiApiKey: (): Promise<void> =>
     ipcRenderer.invoke(IpcChannels.SettingsClearAiKey),
+
+  // ── Dialogs ──────────────────────────────────────────────────
+  showOpenDialog: (): Promise<string | null> =>
+    ipcRenderer.invoke(IpcChannels.DialogShowOpen),
+
+  showSaveDialog: (defaultPath?: string): Promise<string | null> =>
+    ipcRenderer.invoke(IpcChannels.DialogShowSave, defaultPath),
+
+  // ── Project ──────────────────────────────────────────────────
+  createProject: (input: NewProjectInput): Promise<ProjectAndBrandKit> =>
+    ipcRenderer.invoke(IpcChannels.ProjectCreate, input),
+
+  openProject: (rootPath: string): Promise<ProjectAndBrandKit> =>
+    ipcRenderer.invoke(IpcChannels.ProjectOpen, rootPath),
+
+  saveProject: (project: VibeforgeProject, brandKit: BrandKit): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.ProjectSave, project, brandKit),
+
+  listProjects: (): Promise<ProjectSummary[]> =>
+    ipcRenderer.invoke(IpcChannels.ProjectList),
 };
 
 contextBridge.exposeInMainWorld("vibeforge", vibeforgeApi);

@@ -1,0 +1,35 @@
+.wrap {
+  max-width: 480px;
+  border: 1px dashed var(--vf-border-strong);
+  border-radius: var(--vf-radius-lg);
+  padding: 28px;
+  margin-top: 12px;
+}
+
+.phase {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vf-pink);
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.description {
+  color: var(--vf-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+
+.dependsOn {
+  font-size: 12px;
+  color: var(--vf-text-faint);
+  margin: 0;
+}
