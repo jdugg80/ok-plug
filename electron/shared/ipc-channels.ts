@@ -19,6 +19,11 @@ export const IpcChannels = {
   SettingsSetAiKey: "settings:set-ai-key",
   SettingsClearAiKey: "settings:clear-ai-key",
 
+  // Ad Jobs (Step 4)
+  AdJobCreate: "ad-job:create",
+  AdJobList: "ad-job:list",
+  AdJobGet: "ad-job:get",
+
   // App info
   AppGetVersion: "app:get-version",
 } as const;

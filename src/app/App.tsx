@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { BrandKitPage } from "@/features/brand-kit/BrandKitPage";
 import { AdsPage } from "@/features/ads/AdsPage";
+import { AdJobIntakePage } from "@/features/jobs/AdJobIntakePage";
 import { LogosPage } from "@/features/logos/LogosPage";
 import { OverlaysPage } from "@/features/overlays/OverlaysPage";
 import { ExportsPage } from "@/features/exports/ExportsPage";
@@ -18,6 +19,7 @@ export function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/brand-kit" element={<BrandKitPage />} />
           <Route path="/ads" element={<AdsPage />} />
+          <Route path="/ads/new" element={<AdJobIntakePage />} />
           <Route path="/logos" element={<LogosPage />} />
           <Route path="/overlays" element={<OverlaysPage />} />
           <Route path="/exports" element={<ExportsPage />} />

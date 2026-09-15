@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import type { VibeforgeProject, BrandKit, ProjectSummary } from "@/types/domain";
+import type {
+  VibeforgeProject,
+  BrandKit,
+  ProjectSummary,
+} from "@/types/domain";
+import type { NewAdJobInput } from "../../electron/main/services/job-service";
 
 const AUTOSAVE_DELAY_MS = 1200;
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -24,6 +29,7 @@ interface ProjectStoreState {
   updateBrandKit: (partial: Partial<BrandKit>) => void;
   saveActiveProject: () => Promise<void>;
   closeProject: () => void;
+  createAdJob: (input: NewAdJobInput) => Promise<void>;
 }
 
 export const useProjectStore = create<ProjectStoreState>((set, get) => ({
@@ -130,5 +136,38 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       autosaveTimer = null;
     }
     set({ activeProject: null, activeBrandKit: null, saveStatus: "idle" });
+  },
+
+  createAdJob: async (input) => {
+    const { activeProject, activeBrandKit } = get();
+    if (!activeProject || !activeBrandKit) return;
+
+    set({ isLoading: true, error: null });
+    try {
+      const { assets } = await window.vibeforge.createAdJob(
+        activeProject,
+        activeBrandKit,
+        input
+      );
+
+      // Add the new assets to the project
+      const updatedProject: VibeforgeProject = {
+        ...activeProject,
+        assets: [...activeProject.assets, ...assets],
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save the project with the new assets
+      await window.vibeforge.saveProject(updatedProject, activeBrandKit);
+
+      set({
+        activeProject: updatedProject,
+        isLoading: false,
+        saveStatus: "saved",
+      });
+    } catch (err) {
+      set({ isLoading: false, error: (err as Error).message });
+      throw err;
+    }
   },
 }));

@@ -1,8 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { IpcChannels } from "../shared/ipc-channels";
 import type { AiKeyStatus } from "../main/services/secure-storage-service";
-import type { VibeforgeProject, BrandKit, ProjectSummary } from "../shared/types";
+import type { VibeforgeProject, BrandKit, ProjectSummary, AdJob, AssetRecord } from "../shared/types";
 import type { NewProjectInput, ProjectAndBrandKit } from "../main/services/project-service";
+import type { NewAdJobInput } from "../main/services/job-service";
 
 /**
  * Exposed to the renderer via contextBridge.
@@ -42,6 +43,20 @@ const vibeforgeApi = {
 
   listProjects: (): Promise<ProjectSummary[]> =>
     ipcRenderer.invoke(IpcChannels.ProjectList),
+
+  // ── Ad Jobs (Step 4) ────────────────────────────────────────
+  createAdJob: (
+    project: VibeforgeProject,
+    brandKit: BrandKit,
+    input: NewAdJobInput
+  ): Promise<{ job: AdJob; assets: AssetRecord[] }> =>
+    ipcRenderer.invoke(IpcChannels.AdJobCreate, project, brandKit, input),
+
+  listAdJobs: (projectRootPath: string): Promise<AdJob[]> =>
+    ipcRenderer.invoke(IpcChannels.AdJobList, projectRootPath),
+
+  getAdJob: (projectRootPath: string, jobId: string): Promise<AdJob | null> =>
+    ipcRenderer.invoke(IpcChannels.AdJobGet, projectRootPath, jobId),
 };
 
 contextBridge.exposeInMainWorld("vibeforge", vibeforgeApi);

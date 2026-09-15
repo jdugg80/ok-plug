@@ -14,6 +14,13 @@ import {
   type NewProjectInput,
   type ProjectAndBrandKit,
 } from "../services/project-service";
+import {
+  createAdJob,
+  listAdJobs,
+  getAdJob,
+  type NewAdJobInput,
+} from "../services/job-service";
+import type { AdJob, AssetRecord } from "../../shared/types";
 
 /**
  * Register all IPC handlers. Called once from main during app ready.
@@ -94,4 +101,36 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
   ipcMain.handle(IpcChannels.ProjectList, async () => {
     return listRecentProjects();
   });
+
+  // ── Ad Jobs (Step 4) ────────────────────────────────────────
+
+  ipcMain.handle(
+    IpcChannels.AdJobCreate,
+    async (
+      _event,
+      project: VibeforgeProject,
+      brandKit: BrandKit,
+      input: NewAdJobInput
+    ): Promise<{ job: AdJob; assets: AssetRecord[] }> => {
+      return createAdJob(project, brandKit, input);
+    }
+  );
+
+  ipcMain.handle(
+    IpcChannels.AdJobList,
+    async (_event, projectRootPath: string): Promise<AdJob[]> => {
+      return listAdJobs(projectRootPath);
+    }
+  );
+
+  ipcMain.handle(
+    IpcChannels.AdJobGet,
+    async (
+      _event,
+      projectRootPath: string,
+      jobId: string
+    ): Promise<AdJob | null> => {
+      return getAdJob(projectRootPath, jobId);
+    }
+  );
 }
