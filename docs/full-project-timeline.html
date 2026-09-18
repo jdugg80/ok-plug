@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vibeforge — Full Project Timeline</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #7c5cff;
+      --green: #3fb950;
+      --red: #f85149;
+      --yellow: #d29922;
+      --blue: #58a6ff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 2rem; line-height: 1.6; }
+    h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .stats-bar { display: flex; gap: 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .stat { display: flex; flex-direction: column; }
+    .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.25rem; font-weight: 700; color: var(--accent); }
+    .era-divider { font-size: 1.1rem; font-weight: 700; color: var(--accent); margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    .phase { margin-bottom: 1.5rem; }
+    .phase-title { font-size: 0.95rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
+    .rail { display: flex; flex-direction: column; gap: 8px; }
+    .entry { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 1rem; font-size: 0.85rem; display: flex; gap: 1rem; align-items: flex-start; }
+    .entry-date { color: var(--text-muted); font-size: 0.75rem; white-space: nowrap; min-width: 80px; }
+    .entry-text { flex: 1; }
+    .entry.win { border-left: 3px solid var(--green); }
+    .entry.bug { border-left: 3px solid var(--red); }
+    .entry.decision { border-left: 3px solid var(--yellow); }
+    .entry.security { border-left: 3px solid var(--blue); }
+  </style>
+</head>
+<body>
+  <h1>Vibeforge — Full Project Timeline</h1>
+  <p class="subtitle">Complete history of the Vibeforge (ok-plug) project, from initial commit through Phase 2 completion.</p>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-label">Total Commits</span>
+      <span class="stat-value">8</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Active Weeks</span>
+      <span class="stat-value">4</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Estimated Hours</span>
+      <span class="stat-value">10</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Clients Live</span>
+      <span class="stat-value">0</span>
+    </div>
+  </div>
+
+  <!-- Era: Foundation -->
+  <div class="era-divider">Era 1 — Foundation (May–Jun 2026)</div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 1: Project Scaffold</div>
+    <div class="rail">
+      <div class="entry decision">
+        <span class="entry-date">2026-05-04</span>
+        <span class="entry-text">Initial commit — Tauri v2 scaffold (React 19 + Rust backend)</span>
+      </div>
+      <div class="entry bug">
+        <span class="entry-date">2026-05-24</span>
+        <span class="entry-text">Automated backup cleanup before sync</span>
+      </div>
+      <div class="entry decision">
+        <span class="entry-date">2026-06-17</span>
+        <span class="entry-text">Surface sync — device synchronization</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Era: Blueprint v2 -->
+  <div class="era-divider">Era 2 — Blueprint v2 Build-Out (Sep 2026)</div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 2: Format Catalog & Data Model</div>
+    <div class="rail">
+      <div class="entry win">
+        <span class="entry-date">2026-09-15</span>
+        <span class="entry-text">Added Format Catalog with 47 entries across 8 platforms (Facebook, Instagram, TikTok, X, YouTube, Website, Nextdoor, Marquee). Extended data model with BrandKit, AssetRecord, AdJob, CreativeBrief types.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 3: AI Provider Integration</div>
+    <div class="rail">
+      <div class="entry win">
+        <span class="entry-date">2026-09-15</span>
+        <span class="entry-text">Added AI provider key management via Electron safeStorage (DPAPI on Windows). Anthropic Claude + OpenAI GPT-4o dual-provider support with encrypted key storage and Settings UI toggle.</span>
+      </div>
+      <div class="entry bug">
+        <span class="entry-date">2026-09-15</span>
+        <span class="entry-text">Repair: extracted real Electron foundation — src-tauri never removed, package.json never replaced from Tauri scaffold. Full rebuild of Electron main process.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 4: Brand Kit & Job Intake</div>
+    <div class="rail">
+      <div class="entry win">
+        <span class="entry-date">2026-09-15</span>
+        <span class="entry-text">Fixed Brand Kit autosave and tag input commit-on-blur behavior.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-09-15</span>
+        <span class="entry-text">Added Manual Job intake form — keywords, phrases, tone override, format multi-select. Created AdJob + AssetRecord persistence to jobs/ directory.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 5: Rendering Foundation (Session 2 — Sep 18, 2026)</div>
+    <div class="rail">
+      <div class="entry win">
+        <span class="entry-date">2026-09-18</span>
+        <span class="entry-text">Added Puppeteer rendering engine — builds HTML from AdDesignResult, renders at 2x retina resolution via headless Chromium. Supports Google Fonts, uploaded fonts (base64 @font-face), and system fonts with fallback chains.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-09-18</span>
+        <span class="entry-text">Added watermark service using Sharp — semi-transparent "O-Kay-Est Media" text overlay on bottom-right corner, proportional scaling, non-obstructive for client review.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-09-18</span>
+        <span class="entry-text">Fixed ESM/CJS conflict — Puppeteer and Sharp are ESM-only packages but Electron main compiles to CommonJS. Converted to dynamic import() pattern.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-09-18</span>
+        <span class="entry-text">Added Export PNG UI — individual export button per ad, bulk "Export All" button, loading states, success/error feedback. Assets saved to project/renders/ directory.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 6: Job-Driven Generation Pipeline (Session 2 — Sep 18, 2026)</div>
+    <div class="rail">
+      <div class="entry win">
+        <span class="entry-date">2026-09-18</span>
+        <span class="entry-text">Created job orchestrator — drives full generation pipeline from AdJob: queued → in-progress → AI generate per format → persist design JSON → needs-review. Status transitions tracked on both job and asset level.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-09-18</span>
+        <span class="entry-text">Added Job List page — shows all jobs with status badges, format count, keywords, delete capability. Replaced placeholder AdsPage.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-09-18</span>
+        <span class="entry-text">Added Job Detail page — shows creative brief, per-asset AdCanvas previews loaded from design JSON, generate/export/approve buttons, status tracking.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-09-18</span>
+        <span class="entry-text">Added IPC channels and handlers for job status updates, job deletion, asset status transitions, and job-driven generation. Updated store with job state management.</span>
+      </div>
+      <div class="entry decision">
+        <span class="entry-date">2026-09-18</span>
+        <span class="entry-text">Design decision: AI-generated AdDesignResult persisted as JSON per asset (renders/{assetId}-design.json). Enables re-rendering without re-generation, manual editing, and audit trail.</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

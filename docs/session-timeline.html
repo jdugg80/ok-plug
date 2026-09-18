@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vibeforge — Session Timeline</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #7c5cff;
+      --green: #3fb950;
+      --red: #f85149;
+      --yellow: #d29922;
+      --blue: #58a6ff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 2rem; line-height: 1.6; }
+    h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .stats-bar { display: flex; gap: 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .stat { display: flex; flex-direction: column; }
+    .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.25rem; font-weight: 700; color: var(--accent); }
+    .session { margin-bottom: 2rem; }
+    .session-header { font-size: 1rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem; }
+    .session-date { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .timeline { display: flex; flex-direction: column; gap: 6px; }
+    .entry { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.9rem; font-size: 0.85rem; display: flex; gap: 0.75rem; }
+    .entry-hash { color: var(--text-muted); font-family: monospace; font-size: 0.75rem; min-width: 60px; }
+    .entry-msg { flex: 1; }
+    .narrative { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-top: 1rem; }
+    .narrative h3 { font-size: 0.95rem; color: var(--accent); margin-bottom: 0.5rem; }
+    .narrative p { font-size: 0.85rem; color: var(--text-muted); }
+    .narrative ul { font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 0 1.25rem; }
+    .narrative li { margin-bottom: 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Vibeforge — Session Timeline</h1>
+  <p class="subtitle">Detailed commit history grouped by work session.</p>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-label">Total Sessions</span>
+      <span class="stat-value">6</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Total Commits</span>
+      <span class="stat-value">8</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Estimated Hours</span>
+      <span class="stat-value">10</span>
+    </div>
+  </div>
+
+  <div class="session">
+    <div class="session-header">Session 1</div>
+    <div class="session-date">2026-05-04</div>
+    <div class="timeline">
+      <div class="entry">
+        <span class="entry-hash">161145d</span>
+        <span class="entry-msg">Initial commit</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="session">
+    <div class="session-header">Session 2</div>
+    <div class="session-date">2026-05-24</div>
+    <div class="timeline">
+      <div class="entry">
+        <span class="entry-hash">61bc7ad</span>
+        <span class="entry-msg">Automated backup cleanup before sync</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="session">
+    <div class="session-header">Session 3</div>
+    <div class="session-date">2026-06-17</div>
+    <div class="timeline">
+      <div class="entry">
+        <span class="entry-hash">7cd1630</span>
+        <span class="entry-msg">Surface sync</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="session">
+    <div class="session-header">Session 4</div>
+    <div class="session-date">2026-09-15 (early)</div>
+    <div class="timeline">
+      <div class="entry">
+        <span class="entry-hash">1255a91</span>
+        <span class="entry-msg">Add Format Catalog and extended data model (Blueprint v2 Steps 1-2)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="session">
+    <div class="session-header">Session 5</div>
+    <div class="session-date">2026-09-15 (morning)</div>
+    <div class="timeline">
+      <div class="entry">
+        <span class="entry-hash">65bad06</span>
+        <span class="entry-msg">Add AI provider key management via safeStorage (Blueprint v2 Step 3)</span>
+      </div>
+      <div class="entry">
+        <span class="entry-hash">efa5963</span>
+        <span class="entry-msg">Repair: extract real Electron foundation (src-tauri never removed, package.json never replaced)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="session">
+    <div class="session-header">Session 6</div>
+    <div class="session-date">2026-09-15 (afternoon)</div>
+    <div class="timeline">
+      <div class="entry">
+        <span class="entry-hash">03ae1dd</span>
+        <span class="entry-msg">Fix Brand Kit autosave and tag input commit-on-blur</span>
+      </div>
+      <div class="entry">
+        <span class="entry-hash">c63f142</span>
+        <span class="entry-msg">Add Manual Job intake form (Blueprint v2 Step 4)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="narrative">
+    <h3>Session 7 — Sep 18, 2026: Rendering &amp; Job Pipeline</h3>
+    <p>This session completed Phase 1 (Rendering Foundation) and Phase 2 (Job-Driven Generation) of the Vibeforge build-out.</p>
+    <ul>
+      <li><strong>Phase 1 — Rendering Foundation:</strong> Installed Puppeteer and Sharp. Built render-service.ts that constructs HTML matching AdCanvas layout and renders at 2x retina resolution via headless Chromium. Built watermark-service.ts for semi-transparent text overlay. Added font resolution (Google Fonts, uploaded base64 @font-face, system fallback). Fixed ESM/CJS conflict with dynamic imports. Added Export PNG UI with per-asset and bulk export buttons.</li>
+      <li><strong>Phase 2 — Job-Driven Generation:</strong> Created job-orchestrator.ts that drives the full pipeline (queued → in-progress → AI generate per format → persist design JSON → needs-review). Built Job List page with status badges and delete. Built Job Detail page with creative brief display, AdCanvas previews loaded from design JSON, generate/export/approve actions. Added IPC channels for job status updates, deletion, asset status transitions. Updated Zustand store with job state management. Wired routes (/ads → job list, /ads/:jobId → job detail).</li>
+      <li><strong>Key design decision:</strong> AI-generated AdDesignResult is persisted as JSON per asset (renders/{assetId}-design.json), enabling re-rendering without re-generation, manual editing, and audit trail.</li>
+      <li><strong>Bug fix:</strong> ESM/CJS conflict — Puppeteer and Sharp are ESM-only packages but Electron main compiles to CommonJS. Converted static imports to dynamic import() pattern.</li>
+    </ul>
+  </div>
+</body>
+</html>
