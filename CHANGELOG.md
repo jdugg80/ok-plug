@@ -23,6 +23,24 @@ Format based on [Keep a Changelog](https://keepachchangeli.com/).
 - Orphaned `src/main.ts` (legacy template file)
 - Orphaned `ok-plug/` sub-project directory (duplicate template)
 
+## [0.3.0] - 2026-09-18
+
+### Added
+- **ad_intake DB Schema Migration 097:** Mapped ad_intake DB rows to Vibeforge BrandKit + AdJob. Three source types (manual, website_inquiry, website_job_request) mapped to brand context. Request type (simple_asset vs campaign) mapped to format IDs. Status flow (submitted→scanned→quoted→approved/active→completed→archived) mapped to job pipeline stages.
+- **BrandColor Type Resolution:** Created makeBrandColor() helper returning proper BrandColor objects (id, hex, role). Added missing fonts property to BrandKit schema.
+- **IPC Handler Corrections:** Fixed imports to only reference functions existing in intake-service.ts. Added "intake:migrate" handler for mapping DB rows to BrandKit + AdJob + Project. Removed references to non-existent createAdJob/listAdJobs/getAdJob/migrateAdIntake.
+- **Intake Status Helpers:** Implemented mapIntakeStatusToJob, getNextIntakeStatus, getPreviousIntakeStatus for pipeline tracking.
+
+### Fixed
+- BrandColor type error in intake-service.ts (line 123) — string array replaced with makeBrandColor() calls.
+- IPC handler import mismatches — only import functions that exist in intake-service.ts.
+- Missing fonts property in BrandKit mapping return object.
+
+### Decisions
+- ad_intake DB rows map to standalone BrandKit + AdJob objects integrating with existing Vibeforge job generation pipeline.
+- Status flow preserved as seven-stage pipeline: submitted→scanned→quoted→approved/active→completed→archived.
+- Integer arithmetic used for perfect-square checks in tree visualization block division logic.
+
 ## [0.2.0] - 2026-09-18
 
 ### Added

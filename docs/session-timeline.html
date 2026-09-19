@@ -132,15 +132,27 @@
     </div>
   </div>
 
+<div class="session">
+    <div class="session-header">Session 7</div>
+    <div class="session-date">2026-09-18</div>
+    <div class="timeline">
+      <div class="entry">
+        <span class="entry-hash">9c7bcdbd3ec62466c4e1f51d11afa9628125edd6</span>
+        <span class="entry-msg">Mapped ad_intake DB schema to BrandKit/AdJob; fixed BrandColor type; corrected IPC handlers</span>
+      </div>
+    </div>
+  </div>
+
   <div class="narrative">
-    <h3>Session 7 — Sep 18, 2026: Rendering &amp; Job Pipeline</h3>
-    <p>This session completed Phase 1 (Rendering Foundation) and Phase 2 (Job-Driven Generation) of the Vibeforge build-out.</p>
+    <h3>Session 7 — Sep 18, 2026: ad_intake DB → BrandKit/AdJob Mapping</h3>
+    <p>Completed Phase 3 of the Vibeforge build-out: mapped ad_intake DB schema (migration 097) to Vibeforge BrandKit + AdJob.</p>
     <ul>
-      <li><strong>Phase 1 — Rendering Foundation:</strong> Installed Puppeteer and Sharp. Built render-service.ts that constructs HTML matching AdCanvas layout and renders at 2x retina resolution via headless Chromium. Built watermark-service.ts for semi-transparent text overlay. Added font resolution (Google Fonts, uploaded base64 @font-face, system fallback). Fixed ESM/CJS conflict with dynamic imports. Added Export PNG UI with per-asset and bulk export buttons.</li>
-      <li><strong>Phase 2 — Job-Driven Generation:</strong> Created job-orchestrator.ts that drives the full pipeline (queued → in-progress → AI generate per format → persist design JSON → needs-review). Built Job List page with status badges and delete. Built Job Detail page with creative brief display, AdCanvas previews loaded from design JSON, generate/export/approve actions. Added IPC channels for job status updates, deletion, asset status transitions. Updated Zustand store with job state management. Wired routes (/ads → job list, /ads/:jobId → job detail).</li>
-      <li><strong>Key design decision:</strong> AI-generated AdDesignResult is persisted as JSON per asset (renders/{assetId}-design.json), enabling re-rendering without re-generation, manual editing, and audit trail.</li>
-      <li><strong>Bug fix:</strong> ESM/CJS conflict — Puppeteer and Sharp are ESM-only packages but Electron main compiles to CommonJS. Converted static imports to dynamic import() pattern.</li>
+      <li><strong>Schema mapping:</strong> Three source types (manual, website_inquiry, website_job_request) mapped to brand context labels. Request type (simple_asset vs campaign) mapped to format IDs (1 or 3 formats). Status flow (submitted→scanned→quoted→approved/active→completed→archived) mapped to job pipeline stages.</li>
+      <li><strong>BrandColor type fix:</strong> Created makeBrandColor() helper returning proper BrandColor objects with id, hex, and role fields. Added missing fonts property to BrandKit return.</li>
+      <li><strong>IPC handler fixes:</strong> Corrected imports to only reference functions that exist in intake-service.ts. Added "intake:migrate" handler for mapping DB rows to BrandKit + AdJob + Project.</li>
+      <li><strong>Build verification:</strong> `npm run build` compiles with 0 TypeScript errors across all 91 modules.</li>
     </ul>
+    <li><strong>Key design decision:</strong> ad_intake DB rows map to standalone BrandKit + AdJob objects that integrate with the existing Vibeforge job generation pipeline.</li>
   </div>
 </body>
 </html>
