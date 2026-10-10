@@ -1,0 +1,133 @@
+.page {
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f0f0f0;
+  margin: 0;
+}
+
+.newJobBtn {
+  padding: 8px 16px;
+  background: #7c5cff;
+  color: #fff;
+  border-radius: var(--vf-radius-md, 6px);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.newJobBtn:hover {
+  background: #6a4de0;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: #888;
+  margin: 0 0 2rem;
+}
+
+.empty {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  background: #111;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.jobList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.jobCard {
+  display: block;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.jobCard:hover {
+  border-color: #7c5cff;
+}
+
+.jobHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.jobName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f0f0f0;
+}
+
+.statusBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.jobMeta {
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.keywords {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.keyword {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #aaa;
+}
+
+.deleteBtn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.deleteBtn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}

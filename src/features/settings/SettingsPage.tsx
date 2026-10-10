@@ -1,44 +1,84 @@
 import { useEffect, useState, type FormEvent } from "react";
 import styles from "./SettingsPage.module.css";
+import type { AiProviderName } from "@/types/domain";
 
 export function SettingsPage() {
   const [version, setVersion] = useState<string>("…");
-  const [keyStatus, setKeyStatus] = useState<{ isSet: boolean; encryptionAvailable: boolean } | null>(
-    null
-  );
-  const [keyInput, setKeyInput] = useState("");
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "error">("idle");
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [providerChoice, setProviderChoice] = useState<AiProviderName>("anthropic");
+
+  // Anthropic key state
+  const [anthropicKeyStatus, setAnthropicKeyStatus] = useState<{ isSet: boolean; encryptionAvailable: boolean } | null>(null);
+  const [anthropicKeyInput, setAnthropicKeyInput] = useState("");
+  const [anthropicSaveState, setAnthropicSaveState] = useState<"idle" | "saving" | "error">("idle");
+  const [anthropicSaveError, setAnthropicSaveError] = useState<string | null>(null);
+
+  // OpenAI key state
+  const [openaiKeyStatus, setOpenaiKeyStatus] = useState<{ isSet: boolean; encryptionAvailable: boolean } | null>(null);
+  const [openaiKeyInput, setOpenaiKeyInput] = useState("");
+  const [openaiSaveState, setOpenaiSaveState] = useState<"idle" | "saving" | "error">("idle");
+  const [openaiSaveError, setOpenaiSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     window.vibeforge.getAppVersion().then(setVersion);
-    refreshKeyStatus();
+    refreshAllStatus();
   }, []);
 
-  async function refreshKeyStatus() {
-    const status = await window.vibeforge.getAiKeyStatus();
-    setKeyStatus(status);
+  async function refreshAllStatus() {
+    const [provider, anthropicStatus, openaiStatus] = await Promise.all([
+      window.vibeforge.getProviderChoice(),
+      window.vibeforge.getAiKeyStatus(),
+      window.vibeforge.getOpenAIKeyStatus(),
+    ]);
+    setProviderChoice(provider);
+    setAnthropicKeyStatus(anthropicStatus);
+    setOpenaiKeyStatus(openaiStatus);
   }
 
-  async function handleSaveKey(e: FormEvent) {
+  async function handleProviderChange(provider: AiProviderName) {
+    await window.vibeforge.setProviderChoice(provider);
+    setProviderChoice(provider);
+  }
+
+  async function handleSaveAnthropicKey(e: FormEvent) {
     e.preventDefault();
-    if (!keyInput.trim()) return;
-    setSaveState("saving");
-    setSaveError(null);
+    if (!anthropicKeyInput.trim()) return;
+    setAnthropicSaveState("saving");
+    setAnthropicSaveError(null);
     try {
-      await window.vibeforge.setAiApiKey(keyInput.trim());
-      setKeyInput("");
-      setSaveState("idle");
-      await refreshKeyStatus();
+      await window.vibeforge.setAiApiKey(anthropicKeyInput.trim());
+      setAnthropicKeyInput("");
+      setAnthropicSaveState("idle");
+      await refreshAllStatus();
     } catch (err) {
-      setSaveState("error");
-      setSaveError((err as Error).message);
+      setAnthropicSaveState("error");
+      setAnthropicSaveError((err as Error).message);
     }
   }
 
-  async function handleClearKey() {
+  async function handleClearAnthropicKey() {
     await window.vibeforge.clearAiApiKey();
-    await refreshKeyStatus();
+    await refreshAllStatus();
+  }
+
+  async function handleSaveOpenAIKey(e: FormEvent) {
+    e.preventDefault();
+    if (!openaiKeyInput.trim()) return;
+    setOpenaiSaveState("saving");
+    setOpenaiSaveError(null);
+    try {
+      await window.vibeforge.setOpenAIKey(openaiKeyInput.trim());
+      setOpenaiKeyInput("");
+      setOpenaiSaveState("idle");
+      await refreshAllStatus();
+    } catch (err) {
+      setOpenaiSaveState("error");
+      setOpenaiSaveError((err as Error).message);
+    }
+  }
+
+  async function handleClearOpenAIKey() {
+    await window.vibeforge.clearOpenAIKey();
+    await refreshAllStatus();
   }
 
   return (
@@ -48,57 +88,125 @@ export function SettingsPage() {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>AI Provider</h2>
 
-        {keyStatus && !keyStatus.encryptionAvailable && (
+        {anthropicKeyStatus && !anthropicKeyStatus.encryptionAvailable && (
           <div className={styles.warning}>
-            OS-level encryption isn't available on this machine, so an API key
+            OS-level encryption isn't available on this machine, so API keys
             can't be stored securely here. This usually means no system
             keyring is set up.
           </div>
         )}
 
+        <div className={styles.providerToggle}>
+          <button
+            className={`${styles.providerBtn} ${providerChoice === "anthropic" ? styles.providerBtnActive : ""}`}
+            onClick={() => handleProviderChange("anthropic")}
+          >
+            Anthropic (Claude)
+          </button>
+          <button
+            className={`${styles.providerBtn} ${providerChoice === "openai" ? styles.providerBtnActive : ""}`}
+            onClick={() => handleProviderChange("openai")}
+          >
+            OpenAI (GPT-4o)
+          </button>
+        </div>
+
+        <p className={styles.hint}>
+          Active provider: <strong>{providerChoice === "anthropic" ? "Anthropic Claude" : "OpenAI GPT-4o"}</strong>.
+          You need at least one key set for the active provider.
+        </p>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Anthropic API Key</h2>
+
         <div className={styles.row}>
-          <span className={styles.label}>Anthropic API Key</span>
+          <span className={styles.label}>Status</span>
           <span className={styles.value}>
-            {keyStatus === null
+            {anthropicKeyStatus === null
               ? "Checking…"
-              : keyStatus.isSet
+              : anthropicKeyStatus.isSet
                 ? "Set (encrypted)"
                 : "Not set"}
           </span>
         </div>
 
-        <form onSubmit={handleSaveKey} className={styles.keyForm}>
+        <form onSubmit={handleSaveAnthropicKey} className={styles.keyForm}>
           <input
             type="password"
-            placeholder={keyStatus?.isSet ? "Enter a new key to replace it" : "sk-ant-…"}
-            value={keyInput}
-            onChange={(e) => setKeyInput(e.target.value)}
-            disabled={saveState === "saving" || keyStatus?.encryptionAvailable === false}
+            placeholder={anthropicKeyStatus?.isSet ? "Enter a new key to replace it" : "sk-ant-…"}
+            value={anthropicKeyInput}
+            onChange={(e) => setAnthropicKeyInput(e.target.value)}
+            disabled={anthropicSaveState === "saving" || anthropicKeyStatus?.encryptionAvailable === false}
             className={styles.keyInput}
           />
           <button
             type="submit"
             className="vf-btn vf-btn--primary"
             disabled={
-              saveState === "saving" ||
-              !keyInput.trim() ||
-              keyStatus?.encryptionAvailable === false
+              anthropicSaveState === "saving" ||
+              !anthropicKeyInput.trim() ||
+              anthropicKeyStatus?.encryptionAvailable === false
             }
           >
-            {saveState === "saving" ? "Saving…" : "Save Key"}
+            {anthropicSaveState === "saving" ? "Saving…" : "Save Key"}
           </button>
-          {keyStatus?.isSet && (
-            <button type="button" className="vf-btn" onClick={handleClearKey}>
+          {anthropicKeyStatus?.isSet && (
+            <button type="button" className="vf-btn" onClick={handleClearAnthropicKey}>
               Clear Key
             </button>
           )}
         </form>
-        {saveError && <p className={styles.error}>{saveError}</p>}
-        <p className={styles.hint}>
-          Stored encrypted via your OS's credential store. The key is never
-          shown again once saved, and never leaves this device.
-        </p>
+        {anthropicSaveError && <p className={styles.error}>{anthropicSaveError}</p>}
       </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>OpenAI API Key</h2>
+
+        <div className={styles.row}>
+          <span className={styles.label}>Status</span>
+          <span className={styles.value}>
+            {openaiKeyStatus === null
+              ? "Checking…"
+              : openaiKeyStatus.isSet
+                ? "Set (encrypted)"
+                : "Not set"}
+          </span>
+        </div>
+
+        <form onSubmit={handleSaveOpenAIKey} className={styles.keyForm}>
+          <input
+            type="password"
+            placeholder={openaiKeyStatus?.isSet ? "Enter a new key to replace it" : "sk-…"}
+            value={openaiKeyInput}
+            onChange={(e) => setOpenaiKeyInput(e.target.value)}
+            disabled={openaiSaveState === "saving" || openaiKeyStatus?.encryptionAvailable === false}
+            className={styles.keyInput}
+          />
+          <button
+            type="submit"
+            className="vf-btn vf-btn--primary"
+            disabled={
+              openaiSaveState === "saving" ||
+              !openaiKeyInput.trim() ||
+              openaiKeyStatus?.encryptionAvailable === false
+            }
+          >
+            {openaiSaveState === "saving" ? "Saving…" : "Save Key"}
+          </button>
+          {openaiKeyStatus?.isSet && (
+            <button type="button" className="vf-btn" onClick={handleClearOpenAIKey}>
+              Clear Key
+            </button>
+          )}
+        </form>
+        {openaiSaveError && <p className={styles.error}>{openaiSaveError}</p>}
+      </section>
+
+      <p className={styles.hint} style={{ marginTop: "-16px" }}>
+        Keys are stored encrypted via your OS's credential store. They are never
+        shown again once saved, and never leave this device.
+      </p>
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>About</h2>

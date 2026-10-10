@@ -15,17 +15,23 @@
     "package": "npm run build && electron-builder"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
+    "body-parser": "^2.3.0",
+    "express": "^5.2.1",
+    "openai": "^4.77.0",
+    "puppeteer": "^25.11.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^6.28.0",
-    "zustand": "^5.0.2",
-    "uuid": "^11.0.3"
+    "sharp": "^0.35.4",
+    "uuid": "^11.0.3",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@types/node": "^22.10.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^10.0.0",
-    "@types/node": "^22.10.1",
     "@vitejs/plugin-react": "^4.7.0",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",
@@ -35,9 +41,21 @@
   "build": {
     "appId": "com.okayestmedia.vibeforge",
     "productName": "Vibeforge",
-    "files": ["dist/**/*", "dist-electron/**/*"],
-    "win": { "target": "nsis", "icon": "resources/icons/icon.ico" },
-    "mac": { "target": "dmg", "icon": "resources/icons/icon.icns" },
-    "linux": { "target": "AppImage", "icon": "resources/icons/icon.png" }
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "resources/icons/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "resources/icons/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "resources/icons/icon.png"
+    }
   }
 }

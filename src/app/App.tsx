@@ -4,6 +4,8 @@ import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { BrandKitPage } from "@/features/brand-kit/BrandKitPage";
 import { AdsPage } from "@/features/ads/AdsPage";
 import { AdJobIntakePage } from "@/features/jobs/AdJobIntakePage";
+import { JobDetailPage } from "@/features/jobs/JobDetailPage";
+import { GenerateAdsPage } from "@/features/ads/GenerateAdsPage";
 import { LogosPage } from "@/features/logos/LogosPage";
 import { OverlaysPage } from "@/features/overlays/OverlaysPage";
 import { ExportsPage } from "@/features/exports/ExportsPage";
@@ -20,6 +22,8 @@ export function App() {
           <Route path="/brand-kit" element={<BrandKitPage />} />
           <Route path="/ads" element={<AdsPage />} />
           <Route path="/ads/new" element={<AdJobIntakePage />} />
+          <Route path="/ads/:jobId" element={<JobDetailPage />} />
+          <Route path="/ads/generate" element={<GenerateAdsPage />} />
           <Route path="/logos" element={<LogosPage />} />
           <Route path="/overlays" element={<OverlaysPage />} />
           <Route path="/exports" element={<ExportsPage />} />

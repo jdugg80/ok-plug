@@ -19,10 +19,36 @@ export const IpcChannels = {
   SettingsSetAiKey: "settings:set-ai-key",
   SettingsClearAiKey: "settings:clear-ai-key",
 
+  // OpenAI key management
+  SettingsGetOpenAIKeyStatus: "settings:get-openai-key-status",
+  SettingsSetOpenAIKey: "settings:set-openai-key",
+  SettingsClearOpenAIKey: "settings:clear-openai-key",
+
+  // Provider choice
+  SettingsGetProviderChoice: "settings:get-provider-choice",
+  SettingsSetProviderChoice: "settings:set-provider-choice",
+
   // Ad Jobs (Step 4)
   AdJobCreate: "ad-job:create",
   AdJobList: "ad-job:list",
   AdJobGet: "ad-job:get",
+  AdJobUpdateStatus: "ad-job:update-status",
+  AdJobDelete: "ad-job:delete",
+
+  // Asset operations
+  AssetUpdateStatus: "asset:update-status",
+
+  // AI Text Generation (Step 5)
+  AiGenerateCopy: "ai:generate-copy",
+
+  // AI Ad Design (Step 6)
+  AiGenerateAdDesign: "ai:generate-ad-design",
+
+  // Job-driven generation
+  JobGenerate: "job:generate",
+
+  // Asset Export (render + watermark + save)
+  AssetExport: "asset:export",
 
   // App info
   AppGetVersion: "app:get-version",

@@ -13,6 +13,10 @@ import type { AdFormatSpec, Platform, MediaType } from "./format-catalog";
 
 export type { AdFormatSpec, Platform, MediaType };
 
+// ── AI Provider ────────────────────────────────────────────────
+
+export type AiProviderName = "anthropic" | "openai";
+
 // ── Brand Kit ──────────────────────────────────────────────────
 
 export interface BrandColor {

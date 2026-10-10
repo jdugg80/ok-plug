@@ -79,3 +79,38 @@
   margin: 0;
   line-height: 1.5;
 }
+
+.providerToggle {
+  display: flex;
+  gap: 8px;
+}
+
+.providerBtn {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--vf-border);
+  border-radius: var(--vf-radius-md);
+  background: var(--vf-surface);
+  color: var(--vf-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.providerBtn:hover {
+  border-color: var(--vf-text-muted);
+  color: var(--vf-text);
+}
+
+.providerBtnActive {
+  background: var(--vf-accent);
+  border-color: var(--vf-accent);
+  color: #fff;
+}
+
+.providerBtnActive:hover {
+  background: var(--vf-accent-hover, var(--vf-accent));
+  border-color: var(--vf-accent-hover, var(--vf-accent));
+  color: #fff;
+}

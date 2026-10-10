@@ -113,3 +113,64 @@ export async function getAdJob(
     return null;
   }
 }
+
+/**
+ * Update an AdJob's status. Writes the updated job back to disk.
+ */
+export async function updateAdJobStatus(
+  projectRootPath: string,
+  jobId: string,
+  status: AdJob["status"]
+): Promise<AdJob> {
+  const jobPath = path.join(projectRootPath, "jobs", `${jobId}.json`);
+  const content = await fs.readFile(jobPath, "utf-8");
+  const job: AdJob = JSON.parse(content);
+  job.status = status;
+  await fs.writeFile(jobPath, JSON.stringify(job, null, 2));
+  return job;
+}
+
+/**
+ * Delete an AdJob and its JSON file.
+ * Does NOT remove assets from the project — that's handled by the caller.
+ */
+export async function deleteAdJob(
+  projectRootPath: string,
+  jobId: string
+): Promise<void> {
+  try {
+    await fs.unlink(path.join(projectRootPath, "jobs", `${jobId}.json`));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+}
+
+/**
+ * Update the status of a single asset within a project.
+ * Finds the asset by ID in the project's assets array, updates its status,
+ * and saves the project.
+ */
+export async function updateAssetStatus(
+  project: VibeforgeProject,
+  brandKit: BrandKit,
+  assetId: string,
+  status: AssetRecord["status"]
+): Promise<VibeforgeProject> {
+  const asset = project.assets.find((a) => a.id === assetId);
+  if (!asset) throw new Error(`Asset ${assetId} not found`);
+
+  asset.status = status;
+  asset.updatedAt = new Date().toISOString();
+
+  // Save project
+  if (project.rootPath) {
+    const projectFilePath = path.join(project.rootPath, "project.vfproject.json");
+    const fileContents = {
+      project: { ...project, rootPath: undefined },
+      brandKit,
+    };
+    await fs.writeFile(projectFilePath, JSON.stringify(fileContents, null, 2));
+  }
+
+  return project;
+}

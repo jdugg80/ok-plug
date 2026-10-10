@@ -3,6 +3,7 @@ import type {
   VibeforgeProject,
   BrandKit,
   ProjectSummary,
+  AdJob,
 } from "@/types/domain";
 import type { NewAdJobInput } from "../../electron/main/services/job-service";
 
@@ -13,6 +14,7 @@ interface ProjectStoreState {
   activeProject: VibeforgeProject | null;
   activeBrandKit: BrandKit | null;
   recentProjects: ProjectSummary[];
+  jobs: AdJob[];
   isLoading: boolean;
   saveStatus: "idle" | "pending" | "saving" | "saved" | "error";
   error: string | null;
@@ -30,12 +32,17 @@ interface ProjectStoreState {
   saveActiveProject: () => Promise<void>;
   closeProject: () => void;
   createAdJob: (input: NewAdJobInput) => Promise<void>;
+  loadJobs: () => Promise<void>;
+  updateJobStatus: (jobId: string, status: AdJob["status"]) => Promise<void>;
+  deleteJob: (jobId: string) => Promise<void>;
+  generateFromJob: (jobId: string) => Promise<void>;
 }
 
 export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   activeProject: null,
   activeBrandKit: null,
   recentProjects: [],
+  jobs: [],
   isLoading: false,
   saveStatus: "idle",
   error: null,
@@ -104,9 +111,6 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       activeBrandKit: { ...current, ...partial, updatedAt: new Date().toISOString() },
       saveStatus: "pending",
     });
-    // Debounced autosave: fires ~1.2s after the last edit, so a pause
-    // in typing (not an explicit click) is what commits to disk. Every
-    // new edit resets the timer rather than stacking up separate saves.
     if (autosaveTimer) clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(() => {
       autosaveTimer = null;
@@ -135,7 +139,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       clearTimeout(autosaveTimer);
       autosaveTimer = null;
     }
-    set({ activeProject: null, activeBrandKit: null, saveStatus: "idle" });
+    set({ activeProject: null, activeBrandKit: null, jobs: [], saveStatus: "idle" });
   },
 
   createAdJob: async (input) => {
@@ -144,7 +148,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const { assets } = await window.vibeforge.createAdJob(
+      const { job, assets } = await window.vibeforge.createAdJob(
         activeProject,
         activeBrandKit,
         input
@@ -162,12 +166,103 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
 
       set({
         activeProject: updatedProject,
+        jobs: [...get().jobs, job],
         isLoading: false,
         saveStatus: "saved",
       });
     } catch (err) {
       set({ isLoading: false, error: (err as Error).message });
       throw err;
+    }
+  },
+
+  loadJobs: async () => {
+    const { activeProject } = get();
+    if (!activeProject?.rootPath) return;
+
+    try {
+      const jobs = await window.vibeforge.listAdJobs(activeProject.rootPath);
+      set({ jobs });
+    } catch (err) {
+      console.error("Failed to load jobs:", err);
+    }
+  },
+
+  updateJobStatus: async (jobId, status) => {
+    const { activeProject } = get();
+    if (!activeProject?.rootPath) return;
+
+    try {
+      await window.vibeforge.updateAdJobStatus(activeProject.rootPath, jobId, status);
+      // Refresh jobs list
+      await get().loadJobs();
+    } catch (err) {
+      console.error("Failed to update job status:", err);
+    }
+  },
+
+  deleteJob: async (jobId) => {
+    const { activeProject, activeBrandKit } = get();
+    if (!activeProject?.rootPath || !activeBrandKit) return;
+
+    try {
+      await window.vibeforge.deleteAdJob(activeProject.rootPath, jobId);
+
+      // Remove assets belonging to this job from the project
+      const updatedProject: VibeforgeProject = {
+        ...activeProject,
+        assets: activeProject.assets.filter((a) => a.jobId !== jobId),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await window.vibeforge.saveProject(updatedProject, activeBrandKit);
+
+      set({
+        activeProject: updatedProject,
+        jobs: get().jobs.filter((j) => j.id !== jobId),
+      });
+    } catch (err) {
+      console.error("Failed to delete job:", err);
+    }
+  },
+
+  generateFromJob: async (jobId) => {
+    const { activeProject, activeBrandKit, jobs } = get();
+    if (!activeProject || !activeBrandKit) return;
+
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job) return;
+
+    set({ isLoading: true, error: null });
+    try {
+      const result = await window.vibeforge.generateFromJob(
+        job,
+        activeProject,
+        activeBrandKit
+      );
+
+      // Update project with new asset statuses and paths
+      const updatedAssets = activeProject.assets.map((asset) => {
+        const updated = result.assets.find((a) => a.id === asset.id);
+        return updated || asset;
+      });
+
+      const updatedProject: VibeforgeProject = {
+        ...activeProject,
+        assets: updatedAssets,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await window.vibeforge.saveProject(updatedProject, activeBrandKit);
+
+      set({
+        activeProject: updatedProject,
+        jobs: get().jobs.map((j) => (j.id === jobId ? result.job : j)),
+        isLoading: false,
+        saveStatus: "saved",
+      });
+    } catch (err) {
+      set({ isLoading: false, error: (err as Error).message });
     }
   },
 }));

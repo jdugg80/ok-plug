@@ -10,6 +10,7 @@ const PROJECT_SUBFOLDERS = [
   "source/logos",
   "source/photos",
   "source/screenshots",
+  "source/fonts",
   "previews",
   "renders",
   "exports",
