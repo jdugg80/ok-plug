@@ -90,6 +90,8 @@ export interface AssetRecord {
   }[];
   createdAt: string;
   updatedAt: string;
+  /** Set when status transitions into "approved"; cleared on transition out. */
+  approvedAt?: string;
 }
 
 // ── Creative Brief ─────────────────────────────────────────────

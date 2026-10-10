@@ -134,9 +134,12 @@ const vibeforgeApi = {
     design: AdDesignResult,
     formatSpec: { width: number; height: number; id: string },
     fonts?: FontChoice[],
-    outputDir?: string
+    outputDir?: string,
+    projectRootPath?: string,
+    jobId?: string,
+    assetId?: string
   ): Promise<string> =>
-    ipcRenderer.invoke(IpcChannels.AssetExport, design, formatSpec, fonts, outputDir),
+    ipcRenderer.invoke(IpcChannels.AssetExport, design, formatSpec, fonts, outputDir, projectRootPath, jobId, assetId),
 };
 
 contextBridge.exposeInMainWorld("vibeforge", vibeforgeApi);

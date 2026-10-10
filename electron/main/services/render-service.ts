@@ -294,22 +294,25 @@ function escapeHtml(text: string): string {
  * @param design - The AI-generated ad design
  * @param formatSpec - The target format dimensions
  * @param fonts - Optional brand font choices for font resolution
- * @returns PNG image buffer at 2x resolution
+ * @param scale - Device scale factor. Defaults to 2 (retina preview).
+ *               Pass 1 for export so the PNG is exactly width x height pixels.
+ * @returns PNG image buffer at the requested scale
  */
 export async function renderAdToPng(
   design: AdDesignResult,
   formatSpec: AdFormatSpec,
-  fonts?: FontChoice[]
+  fonts?: FontChoice[],
+  scale: number = 2
 ): Promise<Buffer> {
   const browser = await getBrowser();
   const page = await browser.newPage();
 
   try {
-    // Set viewport to exact format dimensions at 2x for retina
+    // Set viewport to exact format dimensions at the requested scale
     await page.setViewport({
       width: formatSpec.width,
       height: formatSpec.height,
-      deviceScaleFactor: 2,
+      deviceScaleFactor: scale,
     });
 
     // Build and set HTML content

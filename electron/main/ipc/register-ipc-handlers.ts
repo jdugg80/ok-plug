@@ -33,6 +33,7 @@ import { mapDbToBrandKit, mapDbToAdJob, mapIntakeStatusToJob, getNextIntakeStatu
 import { generateAdCopy, type GenerateTextInput } from "../services/ai-text-service";
 import { generateAdDesign, type AdDesignInput } from "../services/ai-ad-design-service";
 import { generateFromJob, loadDesignForResult } from "../services/job-orchestrator";
+import { exportAdToPng } from "../services/export-service";
 import type { AdJob, AssetRecord } from "../../shared/types";
 
 /**
@@ -247,6 +248,50 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
     IpcChannels.JobLoadDesign,
     async (_event, assetId: string, projectRootPath: string) => {
       return loadDesignForResult(assetId, projectRootPath);
+    }
+  );
+
+  // ── Asset Export (exact-size PNG, no watermark) ──────────────
+
+  ipcMain.handle(
+    IpcChannels.AssetExport,
+    async (
+      _event,
+      design: import("../services/ai-ad-design-service").AdDesignResult,
+      formatSpec: { width: number; height: number; id: string },
+      fonts?: import("../../shared/types").FontChoice[],
+      outputDir?: string,
+      projectRootPath?: string,
+      jobId?: string,
+      assetId?: string
+    ): Promise<import("../services/export-service").ExportAssetResult> => {
+      // jobId, assetId and projectRootPath are all required. Load the
+      // project, find the asset, and only proceed if it is approved.
+      if (!jobId || !assetId || !projectRootPath) {
+        throw new Error(
+          "jobId, assetId and projectRootPath are required to export."
+        );
+      }
+      const { project } = await openProject(projectRootPath);
+      const asset = project.assets.find((a: AssetRecord) => a.id === assetId);
+      if (!asset) {
+        throw new Error(`Export refused: asset ${assetId} not found in project.`);
+      }
+      if (asset.status !== "approved") {
+        throw new Error(
+          `Export refused: asset ${assetId} status is "${asset.status}", not "approved".`
+        );
+      }
+
+      return exportAdToPng({
+        design,
+        formatSpec,
+        fonts,
+        outputDir,
+        projectRootPath,
+        jobId,
+        asset,
+      });
     }
   );
 

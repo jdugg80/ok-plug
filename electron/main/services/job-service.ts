@@ -159,8 +159,15 @@ export async function updateAssetStatus(
   const asset = project.assets.find((a) => a.id === assetId);
   if (!asset) throw new Error(`Asset ${assetId} not found`);
 
+  const previousStatus = asset.status;
   asset.status = status;
   asset.updatedAt = new Date().toISOString();
+
+  if (status === "approved" && previousStatus !== "approved") {
+    asset.approvedAt = new Date().toISOString();
+  } else if (status !== "approved" && previousStatus === "approved") {
+    delete asset.approvedAt;
+  }
 
   // Save project
   if (project.rootPath) {
