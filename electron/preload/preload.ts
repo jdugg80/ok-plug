@@ -116,7 +116,7 @@ const vibeforgeApi = {
     assetId: string,
     projectRootPath: string
   ): Promise<AdDesignResult | null> =>
-    ipcRenderer.invoke("job:load-design", assetId, projectRootPath),
+    ipcRenderer.invoke(IpcChannels.JobLoadDesign, assetId, projectRootPath),
 
   // ── AI Text Generation (Step 5) ─────────────────
 

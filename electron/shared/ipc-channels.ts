@@ -46,6 +46,7 @@ export const IpcChannels = {
 
   // Job-driven generation
   JobGenerate: "job:generate",
+  JobLoadDesign: "job:load-design",
 
   // Asset Export (render + watermark + save)
   AssetExport: "asset:export",

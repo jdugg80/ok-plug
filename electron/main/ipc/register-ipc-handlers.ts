@@ -1,7 +1,38 @@
 import { ipcMain, dialog, app, BrowserWindow } from "electron";
 import { IpcChannels } from "../../shared/ipc-channels";
 import type { VibeforgeProject, BrandKit } from "../../shared/types";
+import {
+  getAnthropicKeyStatus,
+  setAnthropicKey,
+  clearAnthropicKey,
+  getOpenAIKeyStatus,
+  setOpenAIKey,
+  clearOpenAIKey,
+  getProviderChoice,
+  setProviderChoice,
+} from "../services/secure-storage-service";
+import type { AiProviderName } from "../../shared/types";
+import {
+  createProject,
+  openProject,
+  saveProject,
+  listRecentProjects,
+  type NewProjectInput,
+  type ProjectAndBrandKit,
+} from "../services/project-service";
+import {
+  createAdJob,
+  listAdJobs,
+  getAdJob,
+  updateAdJobStatus,
+  deleteAdJob,
+  updateAssetStatus,
+  type NewAdJobInput,
+} from "../services/job-service";
 import { mapDbToBrandKit, mapDbToAdJob, mapIntakeStatusToJob, getNextIntakeStatus, getPreviousIntakeStatus, AdIntakeDBRow } from "../services/intake-service";
+import { generateAdCopy, type GenerateTextInput } from "../services/ai-text-service";
+import { generateAdDesign, type AdDesignInput } from "../services/ai-ad-design-service";
+import { generateFromJob, loadDesignForResult } from "../services/job-orchestrator";
 import type { AdJob, AssetRecord } from "../../shared/types";
 
 /**
@@ -11,23 +42,60 @@ import type { AdJob, AssetRecord } from "../../shared/types";
  */
 export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): void {
   // ── Settings: AI Key Management ──────────────────────────────
+
   ipcMain.handle(IpcChannels.SettingsGetAiKeyStatus, async () => {
-    return "key-status";
+    return getAnthropicKeyStatus();
   });
 
   ipcMain.handle(
     IpcChannels.SettingsSetAiKey,
-    async (_event, rawKey: string) => {}
+    async (_event, rawKey: string) => {
+      await setAnthropicKey(rawKey);
+    }
   );
 
-  ipcMain.handle(IpcChannels.SettingsClearAiKey, async () => {});
+  ipcMain.handle(IpcChannels.SettingsClearAiKey, async () => {
+    await clearAnthropicKey();
+  });
+
+  // ── Settings: OpenAI Key Management ──────────────────────────
+
+  ipcMain.handle(IpcChannels.SettingsGetOpenAIKeyStatus, async () => {
+    return getOpenAIKeyStatus();
+  });
+
+  ipcMain.handle(
+    IpcChannels.SettingsSetOpenAIKey,
+    async (_event, rawKey: string) => {
+      await setOpenAIKey(rawKey);
+    }
+  );
+
+  ipcMain.handle(IpcChannels.SettingsClearOpenAIKey, async () => {
+    await clearOpenAIKey();
+  });
+
+  // ── Settings: Provider Choice ────────────────────────────────
+
+  ipcMain.handle(IpcChannels.SettingsGetProviderChoice, async () => {
+    return getProviderChoice();
+  });
+
+  ipcMain.handle(
+    IpcChannels.SettingsSetProviderChoice,
+    async (_event, provider: AiProviderName) => {
+      await setProviderChoice(provider);
+    }
+  );
 
   // ── App Info ─────────────────────────────────────────────────
+
   ipcMain.handle(IpcChannels.AppGetVersion, async () => {
     return app.getVersion();
   });
 
   // ── Dialogs ──────────────────────────────────────────────────
+
   ipcMain.handle(IpcChannels.DialogShowOpen, async (): Promise<string | null> => {
     const win = getMainWindow();
     if (!win) return null;
@@ -51,41 +119,135 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
   });
 
   // ── Project ──────────────────────────────────────────────────
-  ipcMain.handle(IpcChannels.ProjectCreate, async (_event, input: any) => {
-    return { project: { id: "temp" }, brandKit: { id: "temp", businessName: "temp" } };
-  });
 
-  ipcMain.handle(IpcChannels.ProjectOpen, async (_event, rootPath: string) => {
-    return { project: { id: "temp" }, brandKit: { id: "temp", businessName: "temp" } };
-  });
-
-  ipcMain.handle(IpcChannels.ProjectSave, async (_event, project: any, brandKit: any) => {});
-
-  ipcMain.handle(IpcChannels.ProjectList, async () => []);
-  // ── Ad Jobs (Step 4) ────────────────────────────────────────
   ipcMain.handle(
-    IpcChannels.AdJobCreate,
-    async (_event, project: any, brandKit: any, input: any) => {
-      const adJob: AdJob = {
-        id: "temp-job-id",
-        businessId: "",
-        businessName: input?.businessName || "Unknown",
-        brandKitId: "",
-        requestedFormatIds: input?.requestedFormatIds || ["facebook-feed-universal-1x1"],
-        creativeBrief: input?.creativeBrief || { keywords: [], phrases: [], toneOverride: undefined },
-        status: "queued",
-        createdAt: new Date().toISOString(),
-        dueAt: undefined,
-      };
-      const assets: AssetRecord[] = [];
-      return { job: adJob, assets };
+    IpcChannels.ProjectCreate,
+    async (_event, input: NewProjectInput): Promise<ProjectAndBrandKit> => {
+      return createProject(input);
     }
   );
 
-  ipcMain.handle(IpcChannels.AdJobList, async (_event, projectRootPath: string) => []);
+  ipcMain.handle(
+    IpcChannels.ProjectOpen,
+    async (_event, rootPath: string): Promise<ProjectAndBrandKit> => {
+      return openProject(rootPath);
+    }
+  );
+
+  ipcMain.handle(
+    IpcChannels.ProjectSave,
+    async (_event, project: VibeforgeProject, brandKit: BrandKit): Promise<void> => {
+      return saveProject(project, brandKit);
+    }
+  );
+
+  ipcMain.handle(IpcChannels.ProjectList, async () => {
+    return listRecentProjects();
+  });
+
+  // ── Ad Jobs (Step 4) ────────────────────────────────────────
+
+  ipcMain.handle(
+    IpcChannels.AdJobCreate,
+    async (
+      _event,
+      project: VibeforgeProject,
+      brandKit: BrandKit,
+      input: NewAdJobInput
+    ): Promise<{ job: AdJob; assets: AssetRecord[] }> => {
+      return createAdJob(project, brandKit, input);
+    }
+  );
+
+  ipcMain.handle(
+    IpcChannels.AdJobList,
+    async (_event, projectRootPath: string): Promise<AdJob[]> => {
+      return listAdJobs(projectRootPath);
+    }
+  );
+
   ipcMain.handle(
     IpcChannels.AdJobGet,
-    async (_event, projectRootPath: string, jobId: string) => null
+    async (
+      _event,
+      projectRootPath: string,
+      jobId: string
+    ): Promise<AdJob | null> => {
+      return getAdJob(projectRootPath, jobId);
+    }
+  );
+
+  ipcMain.handle(
+    IpcChannels.AdJobUpdateStatus,
+    async (
+      _event,
+      projectRootPath: string,
+      jobId: string,
+      status: AdJob["status"]
+    ): Promise<AdJob> => {
+      return updateAdJobStatus(projectRootPath, jobId, status);
+    }
+  );
+
+  ipcMain.handle(
+    IpcChannels.AdJobDelete,
+    async (_event, projectRootPath: string, jobId: string): Promise<void> => {
+      await deleteAdJob(projectRootPath, jobId);
+    }
+  );
+
+  // ── Asset Operations ─────────────────────────────────────────
+
+  ipcMain.handle(
+    IpcChannels.AssetUpdateStatus,
+    async (
+      _event,
+      project: VibeforgeProject,
+      brandKit: BrandKit,
+      assetId: string,
+      status: AssetRecord["status"]
+    ): Promise<VibeforgeProject> => {
+      return updateAssetStatus(project, brandKit, assetId, status);
+    }
+  );
+
+  // ── AI Text Generation (Step 5) ──────────────────────────────
+
+  ipcMain.handle(
+    IpcChannels.AiGenerateCopy,
+    async (_event, input: GenerateTextInput) => {
+      return generateAdCopy(input);
+    }
+  );
+
+  // ── AI Ad Design (Step 6) ────────────────────────────────────
+
+  ipcMain.handle(
+    IpcChannels.AiGenerateAdDesign,
+    async (_event, input: AdDesignInput) => {
+      return generateAdDesign(input);
+    }
+  );
+
+  // ── Job-Driven Generation ────────────────────────────────────
+
+  ipcMain.handle(
+    IpcChannels.JobGenerate,
+    async (
+      _event,
+      job: AdJob,
+      project: VibeforgeProject,
+      brandKit: BrandKit
+    ) => {
+      return generateFromJob(job, project, brandKit);
+    }
+  );
+
+  ipcMain.handle(
+    IpcChannels.JobLoadDesign,
+    async (_event, assetId: string, projectRootPath: string) => {
+      return loadDesignForResult(assetId, projectRootPath);
+    }
   );
 
   // ── Ad Intake Migration (Migration 097) ─────────────────────
