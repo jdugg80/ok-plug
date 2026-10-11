@@ -8,6 +8,16 @@ import type { NewAdJobInput } from "../main/services/job-service";
 import type { GenerateTextInput, GeneratedCopy } from "../main/services/ai-text-service";
 import type { AdDesignInput, AdDesignResult } from "../main/services/ai-ad-design-service";
 import type { FontChoice } from "../shared/types";
+import type { SkippedFormat } from "../main/services/unity-import-service";
+
+export interface UnityImportResult {
+  project: VibeforgeProject;
+  brandKit: BrandKit;
+  job: AdJob;
+  skipped: SkippedFormat[];
+  warnings: string[];
+  created: boolean;
+}
 
 /**
  * Exposed to the renderer via contextBridge.
@@ -140,6 +150,11 @@ const vibeforgeApi = {
     assetId?: string
   ): Promise<string> =>
     ipcRenderer.invoke(IpcChannels.AssetExport, design, formatSpec, fonts, outputDir, projectRootPath, jobId, assetId),
+
+  // ── Unity Core Import ────────────────────────────────
+
+  importFromUnityCore: (): Promise<UnityImportResult> =>
+    ipcRenderer.invoke(IpcChannels.UnityImportManifest),
 };
 
 contextBridge.exposeInMainWorld("vibeforge", vibeforgeApi);

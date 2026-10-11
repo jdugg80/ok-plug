@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-import type { AdJob, AssetRecord, VibeforgeProject, BrandKit } from "../../shared/types";
+import type { AdJob, AssetRecord, VibeforgeProject, BrandKit, CustomAdFormatSpec } from "../../shared/types";
 import { FORMAT_CATALOG } from "../../shared/format-catalog";
 
 export interface NewAdJobInput {
@@ -14,8 +14,27 @@ export interface NewAdJobInput {
     referenceAssetPaths: string[];
     screenshotPaths: string[];
     toneOverride?: string;
+    callToAction?: string;
+    requiredDisclaimers?: string;
+    adDirection?: string;
   };
   dueAt?: string;
+  customFormatSpecs?: CustomAdFormatSpec[];
+  unityCoreJobId?: string;
+}
+
+/**
+ * Persist a job to <rootPath>/jobs/<id>.json.
+ * Same save path used by createAdJob and addFormatsToJob.
+ */
+async function writeJobFile(project: VibeforgeProject, job: AdJob): Promise<void> {
+  if (!project.rootPath) return;
+  const jobsDir = path.join(project.rootPath, "jobs");
+  await fs.mkdir(jobsDir, { recursive: true });
+  await fs.writeFile(
+    path.join(jobsDir, `${job.id}.json`),
+    JSON.stringify(job, null, 2)
+  );
 }
 
 /**
@@ -33,11 +52,13 @@ export async function createAdJob(
 
   const job: AdJob = {
     id: jobId,
+    unityCoreJobId: input.unityCoreJobId,
     businessId: brandKit.id,
     businessName: input.businessName,
     brandKitId: input.brandKitId,
     requestedFormatIds: input.requestedFormatIds,
     creativeBrief: input.creativeBrief,
+    customFormatSpecs: input.customFormatSpecs,
     status: "queued",
     createdAt: now,
     dueAt: input.dueAt,
@@ -45,7 +66,9 @@ export async function createAdJob(
 
   // Create one AssetRecord per requested format
   const assets: AssetRecord[] = input.requestedFormatIds.map((formatId) => {
-    const formatSpec = FORMAT_CATALOG.find((f) => f.id === formatId);
+    const formatSpec =
+      FORMAT_CATALOG.find((f) => f.id === formatId) ??
+      input.customFormatSpecs?.find((f) => f.id === formatId);
     return {
       id: randomUUID(),
       projectId: project.id,
@@ -62,17 +85,68 @@ export async function createAdJob(
     };
   });
 
-  // Write job to disk
-  if (project.rootPath) {
-    const jobsDir = path.join(project.rootPath, "jobs");
-    await fs.mkdir(jobsDir, { recursive: true });
-    await fs.writeFile(
-      path.join(jobsDir, `${jobId}.json`),
-      JSON.stringify(job, null, 2)
-    );
+  await writeJobFile(project, job);
+  return { job, assets };
+}
+
+/**
+ * Append only missing format ids / custom specs to an existing job.
+ * Creates AssetRecords ONLY for the newly added ids (same sizing lookup
+ * as createAdJob: catalog then customFormatSpecs), pushes them onto
+ * project.assets, and persists the job via writeJobFile.
+ * Never touches existing assets, designs or statuses.
+ */
+export async function addFormatsToJob(
+  project: VibeforgeProject,
+  job: AdJob,
+  newFormatIds: string[],
+  newCustomSpecs: CustomAdFormatSpec[]
+): Promise<AssetRecord[]> {
+  const now = new Date().toISOString();
+  const knownIds = new Set(job.requestedFormatIds);
+  const addedIds: string[] = [];
+
+  for (const id of newFormatIds) {
+    if (!knownIds.has(id)) {
+      job.requestedFormatIds.push(id);
+      knownIds.add(id);
+      addedIds.push(id);
+    }
   }
 
-  return { job, assets };
+  if (!job.customFormatSpecs) job.customFormatSpecs = [];
+  const knownSpecIds = new Set(job.customFormatSpecs.map((s) => s.id));
+  for (const spec of newCustomSpecs) {
+    if (!knownSpecIds.has(spec.id)) {
+      job.customFormatSpecs.push(spec);
+      knownSpecIds.add(spec.id);
+    }
+  }
+
+  // AssetRecords only for the newly added ids
+  const newAssets: AssetRecord[] = addedIds.map((formatId) => {
+    const formatSpec =
+      FORMAT_CATALOG.find((f) => f.id === formatId) ??
+      job.customFormatSpecs?.find((f) => f.id === formatId);
+    return {
+      id: randomUUID(),
+      projectId: project.id,
+      jobId: job.id,
+      formatSpecId: formatId,
+      name: `${job.businessName} — ${formatSpec?.placement ?? formatId}`,
+      type: "static-ad",
+      status: "draft",
+      dimensions: formatSpec
+        ? { width: formatSpec.width, height: formatSpec.height }
+        : undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
+  project.assets.push(...newAssets);
+
+  await writeJobFile(project, job);
+  return newAssets;
 }
 
 /**

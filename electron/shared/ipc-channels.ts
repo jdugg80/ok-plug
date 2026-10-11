@@ -51,6 +51,9 @@ export const IpcChannels = {
   // Asset Export (render + watermark + save)
   AssetExport: "asset:export",
 
+  // Unity Core import
+  UnityImportManifest: "unity:import-manifest",
+
   // App info
   AppGetVersion: "app:get-version",
 } as const;

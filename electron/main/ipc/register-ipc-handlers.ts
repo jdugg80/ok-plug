@@ -1,4 +1,6 @@
 import { ipcMain, dialog, app, BrowserWindow } from "electron";
+import { promises as fs } from "fs";
+import path from "path";
 import { IpcChannels } from "../../shared/ipc-channels";
 import type { VibeforgeProject, BrandKit } from "../../shared/types";
 import {
@@ -22,6 +24,7 @@ import {
 } from "../services/project-service";
 import {
   createAdJob,
+  addFormatsToJob,
   listAdJobs,
   getAdJob,
   updateAdJobStatus,
@@ -34,6 +37,7 @@ import { generateAdCopy, type GenerateTextInput } from "../services/ai-text-serv
 import { generateAdDesign, type AdDesignInput } from "../services/ai-ad-design-service";
 import { generateFromJob, loadDesignForResult } from "../services/job-orchestrator";
 import { exportAdToPng } from "../services/export-service";
+import { validateManifest, mapManifest } from "../services/unity-import-service";
 import type { AdJob, AssetRecord } from "../../shared/types";
 
 /**
@@ -292,6 +296,187 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
         jobId,
         asset,
       });
+    }
+  );
+
+  // ── Unity Core Import ─────────────────────────────────────────
+
+  ipcMain.handle(
+    IpcChannels.UnityImportManifest,
+    async (): Promise<{
+      project: VibeforgeProject;
+      brandKit: BrandKit;
+      job: AdJob;
+      skipped: import("../services/unity-import-service").SkippedFormat[];
+      warnings: string[];
+      created: boolean;
+    }> => {
+      // 1. Pick the campaign folder (starts at the Unity Core export root)
+      const defaultCampaignDir = "D:\\OKM client advertising";
+      const campaignDirOpts: Electron.OpenDialogOptions = {
+        title: "Choose Unity Core campaign folder",
+        properties: ["openDirectory"],
+        defaultPath: defaultCampaignDir,
+      };
+      const win = getMainWindow();
+      const campaignPick = win
+        ? await dialog.showOpenDialog(win, campaignDirOpts)
+        : await dialog.showOpenDialog(campaignDirOpts);
+      if (campaignPick.canceled || campaignPick.filePaths.length === 0) {
+        throw new Error("No campaign folder selected.");
+      }
+      const campaignFolder = campaignPick.filePaths[0];
+
+      // 2. Read + validate manifest.json
+      const manifestPath = path.join(campaignFolder, "manifest.json");
+      let rawText: string;
+      try {
+        rawText = await fs.readFile(manifestPath, "utf-8");
+      } catch {
+        throw new Error(`No manifest.json in ${campaignFolder}`);
+      }
+      let raw: unknown;
+      try {
+        raw = JSON.parse(rawText);
+      } catch {
+        throw new Error("manifest.json is not valid JSON.");
+      }
+      const validated = validateManifest(raw);
+      if (!validated.ok || !validated.manifest) {
+        throw new Error(`Manifest is invalid:\n${validated.errors.join("\n")}`);
+      }
+      const warnings = [...validated.warnings];
+      const mapped = mapManifest(validated.manifest, campaignFolder);
+      warnings.push(...mapped.warnings);
+
+      const adIntakeId = validated.manifest.unity.adIntakeId;
+      const campaignId = validated.manifest.unity.campaignId;
+
+      // 3. Idempotent lookup: scan recent projects (max 20) for this adIntakeId
+      const recent = await listRecentProjects();
+      let existing: { rootPath: string; project: VibeforgeProject; brandKit: BrandKit } | null =
+        null;
+      const limit = Math.min(recent.length, 20);
+      for (let i = 0; i < limit; i++) {
+        try {
+          const opened = await openProject(recent[i].rootPath);
+          if (opened.project.unity?.adIntakeId === adIntakeId) {
+            existing = {
+              rootPath: recent[i].rootPath,
+              project: opened.project,
+              brandKit: opened.brandKit,
+            };
+            break;
+          }
+        } catch {
+          // stale/broken recent entry — skip
+        }
+      }
+
+      if (existing) {
+        // ── UPDATE path: fill empty fields + add formats only ──
+        const { project, brandKit } = existing;
+
+        // Refresh unity metadata (folder may have moved; schema version may have bumped)
+        project.unity = {
+          ...project.unity!,
+          campaignId,
+          campaignFolder,
+          manifestSchemaVersion: validated.manifest.schemaVersion,
+          importedAt: new Date().toISOString(),
+        };
+
+        // Brand kit: fill ONLY empty fields — never overwrite existing edits
+        if (brandKit.colors.length === 0 && mapped.brandKitPatch.colors) {
+          brandKit.colors = mapped.brandKitPatch.colors;
+        }
+        if (brandKit.vibeTags.length === 0 && mapped.brandKitPatch.vibeTags) {
+          brandKit.vibeTags = mapped.brandKitPatch.vibeTags;
+        }
+        if (brandKit.toneTags.length === 0 && mapped.brandKitPatch.toneTags) {
+          brandKit.toneTags = mapped.brandKitPatch.toneTags;
+        }
+        if (!brandKit.website && mapped.brandKitPatch.website) {
+          brandKit.website = mapped.brandKitPatch.website;
+        }
+
+        // Job: find by unityCoreJobId, or create
+        const jobs = await listAdJobs(project.rootPath!);
+        let job = jobs.find((j) => j.unityCoreJobId === campaignId) ?? null;
+
+        if (job) {
+          // ADD new format ids / custom specs + new AssetRecords only —
+          // never remove or overwrite existing assets/designs/statuses
+          await addFormatsToJob(
+            project,
+            job,
+            mapped.jobInput.requestedFormatIds,
+            mapped.customFormatSpecs
+          );
+        } else {
+          const created = await createAdJob(project, brandKit, {
+            businessName: mapped.jobInput.businessName,
+            brandKitId: brandKit.id,
+            requestedFormatIds: mapped.jobInput.requestedFormatIds,
+            creativeBrief: mapped.jobInput.creativeBrief,
+            customFormatSpecs: mapped.customFormatSpecs,
+            unityCoreJobId: campaignId,
+          });
+          job = created.job;
+          project.assets.push(...created.assets);
+        }
+
+        brandKit.updatedAt = new Date().toISOString();
+        await saveProject(project, brandKit);
+        return { project, brandKit, job, skipped: mapped.skipped, warnings, created: false };
+      }
+
+      // ── CREATE path: project lives in Vibeforge's normal location ──
+      const parentOpts: Electron.OpenDialogOptions = {
+        title: "Choose where to create the Vibeforge project",
+        properties: ["openDirectory"],
+        defaultPath: app.getPath("documents"),
+      };
+      const parentPick = win
+        ? await dialog.showOpenDialog(win, parentOpts)
+        : await dialog.showOpenDialog(parentOpts);
+      if (parentPick.canceled || parentPick.filePaths.length === 0) {
+        throw new Error("No project location selected.");
+      }
+      const parentDirectory = parentPick.filePaths[0];
+
+      const { project, brandKit } = await createProject({
+        name: mapped.projectInput.name,
+        businessName: mapped.projectInput.businessName,
+        website: mapped.projectInput.website,
+        notes: mapped.projectInput.notes,
+        parentDirectory,
+      });
+
+      // Apply brand kit patch (fields were empty on a fresh project)
+      if (mapped.brandKitPatch.colors) brandKit.colors = mapped.brandKitPatch.colors;
+      if (mapped.brandKitPatch.vibeTags) brandKit.vibeTags = mapped.brandKitPatch.vibeTags;
+      if (mapped.brandKitPatch.toneTags) brandKit.toneTags = mapped.brandKitPatch.toneTags;
+      if (mapped.brandKitPatch.website) brandKit.website = mapped.brandKitPatch.website;
+
+      project.unity = mapped.projectInput.unity;
+
+      // Persist project + unity block + brand patch BEFORE createAdJob so a
+      // later failure cannot leave a project without its unity block.
+      await saveProject(project, brandKit);
+
+      const { job, assets } = await createAdJob(project, brandKit, {
+        businessName: mapped.jobInput.businessName,
+        brandKitId: brandKit.id,
+        requestedFormatIds: mapped.jobInput.requestedFormatIds,
+        creativeBrief: mapped.jobInput.creativeBrief,
+        customFormatSpecs: mapped.customFormatSpecs,
+        unityCoreJobId: campaignId,
+      });
+      project.assets.push(...assets);
+
+      await saveProject(project, brandKit);
+      return { project, brandKit, job, skipped: mapped.skipped, warnings, created: true };
     }
   );
 
