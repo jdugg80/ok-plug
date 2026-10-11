@@ -3,18 +3,20 @@ import { useProjectStore } from "@/store/project-store";
 import { FormatMultiSelect } from "@/components/FormatMultiSelect";
 import { AdCanvas } from "@/components/AdCanvas";
 import { FORMAT_CATALOG } from "@/types/domain";
-import type { AdFormatSpec, AdDesignResult } from "@/types/domain";
+import type { AdFormatSpec, AdDesignResult, CustomAdFormatSpec } from "@/types/domain";
 import styles from "./GenerateAdsPage.module.css";
+
+type AnyFormatSpec = AdFormatSpec | CustomAdFormatSpec;
 
 interface GeneratedAd {
   formatId: string;
-  spec: AdFormatSpec;
+  spec: AnyFormatSpec;
   design: AdDesignResult;
   imageUrl?: string;
 }
 
 export function GenerateAdsPage() {
-  const { activeProject, activeBrandKit } = useProjectStore();
+  const { activeProject, activeBrandKit, jobs } = useProjectStore();
 
   const [selectedFormats, setSelectedFormats] = useState<string[]>([
     "facebook-feed-universal-1x1",
@@ -69,7 +71,11 @@ export function GenerateAdsPage() {
 
     for (let i = 0; i < selectedFormats.length; i++) {
       const formatId = selectedFormats[i];
-      const spec = FORMAT_CATALOG.find((f: AdFormatSpec) => f.id === formatId);
+      const spec =
+        FORMAT_CATALOG.find((f: AdFormatSpec) => f.id === formatId) ??
+        jobs
+          .flatMap((j) => j.customFormatSpecs ?? [])
+          .find((f) => f.id === formatId);
       if (!spec) continue;
 
       setProgress(`Designing ${spec.platform} ${spec.placement}... (${i + 1}/${selectedFormats.length})`);

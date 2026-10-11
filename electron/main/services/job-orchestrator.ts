@@ -55,7 +55,9 @@ export async function generateFromJob(
   // Step 2: Generate for each format
   for (let i = 0; i < job.requestedFormatIds.length; i++) {
     const formatId = job.requestedFormatIds[i];
-    const formatSpec = FORMAT_CATALOG.find((f) => f.id === formatId);
+    const formatSpec =
+      FORMAT_CATALOG.find((f) => f.id === formatId) ??
+      job.customFormatSpecs?.find((f) => f.id === formatId);
 
     // Find the corresponding asset in the project
     const asset = project.assets.find(
@@ -88,6 +90,9 @@ export async function generateFromJob(
         formatSpec: formatSpec!,
         brandKit,
         keywords,
+        callToAction: job.creativeBrief.callToAction,
+        requiredDisclaimers: job.creativeBrief.requiredDisclaimers,
+        adDirection: job.creativeBrief.adDirection,
       };
 
       // Generate design via AI

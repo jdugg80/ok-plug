@@ -3,8 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useProjectStore } from "@/store/project-store";
 import { AdCanvas } from "@/components/AdCanvas";
 import { FORMAT_CATALOG } from "@/types/domain";
-import type { AdJob, AssetRecord, AdDesignResult, AdFormatSpec } from "@/types/domain";
+import type { AdJob, AssetRecord, AdDesignResult, AdFormatSpec, CustomAdFormatSpec } from "@/types/domain";
 import styles from "./JobDetailPage.module.css";
+
+type AnyFormatSpec = AdFormatSpec | CustomAdFormatSpec;
 
 const STATUS_LABELS: Record<AdJob["status"], string> = {
   queued: "Queued",
@@ -37,7 +39,7 @@ const ASSET_STATUS_COLORS: Record<AssetRecord["status"], string> = {
 
 interface AssetWithDesign {
   asset: AssetRecord;
-  spec: AdFormatSpec | undefined;
+  spec: AnyFormatSpec | undefined;
   design: AdDesignResult | null;
 }
 
@@ -76,7 +78,9 @@ export function JobDetailPage() {
     const jobAssets = activeProject.assets.filter((a) => a.jobId === jobId);
     const withDesigns: AssetWithDesign[] = await Promise.all(
       jobAssets.map(async (asset) => {
-        const spec = FORMAT_CATALOG.find((f) => f.id === asset.formatSpecId);
+        const spec =
+          FORMAT_CATALOG.find((f) => f.id === asset.formatSpecId) ??
+          foundJob.customFormatSpecs?.find((f) => f.id === asset.formatSpecId);
         let design: AdDesignResult | null = null;
         if (activeProject.rootPath && asset.status !== "draft") {
           design = await window.vibeforge.loadDesignForResult(
@@ -113,7 +117,7 @@ export function JobDetailPage() {
     setGenerating(false);
   }
 
-  async function handleExport(assetId: string, design: AdDesignResult, spec: AdFormatSpec) {
+  async function handleExport(assetId: string, design: AdDesignResult, spec: AnyFormatSpec) {
     setExportingAssetId(assetId);
     try {
       const filePath = await window.vibeforge.exportAsset(

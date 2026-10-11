@@ -4,13 +4,16 @@
  */
 
 import type { AdFormatSpec } from "../../shared/format-catalog";
-import type { BrandKit, BrandColor, FontChoice } from "../../shared/types";
+import type { BrandKit, BrandColor, FontChoice, CustomAdFormatSpec } from "../../shared/types";
 import { getActiveProvider } from "./ai-provider";
 
 export interface AdDesignInput {
-  formatSpec: AdFormatSpec;
+  formatSpec: AdFormatSpec | CustomAdFormatSpec;
   brandKit: BrandKit;
   keywords: string[];
+  callToAction?: string;
+  requiredDisclaimers?: string;
+  adDirection?: string;
 }
 
 export interface AdDesignResult {
@@ -54,7 +57,7 @@ export async function generateAdDesign(
   input: AdDesignInput
 ): Promise<AdDesignResult> {
   const provider = await getActiveProvider();
-  const { formatSpec, brandKit, keywords } = input;
+  const { formatSpec, brandKit, keywords, callToAction, requiredDisclaimers, adDirection } = input;
 
   // Build brand context
   const colorsList = brandKit.colors
@@ -68,6 +71,14 @@ export async function generateAdDesign(
   const tone = brandKit.toneTags.join(", ") || "professional, trustworthy";
   const vibe = brandKit.vibeTags.join(", ") || "clean, modern";
 
+  const briefLines = [
+    callToAction ? `CALL TO ACTION: ${callToAction}` : null,
+    requiredDisclaimers ? `REQUIRED DISCLAIMERS (include in the design): ${requiredDisclaimers}` : null,
+    adDirection ? `AD DIRECTION: ${adDirection}` : null,
+  ]
+    .filter((line): line is string => line !== null)
+    .join("\n");
+
   const prompt = `You are a professional ad designer creating Facebook/Instagram ads.
 
 Generate a COMPLETE ad design for a ${formatSpec.width}×${formatSpec.height} ${formatSpec.platform} ${formatSpec.placement} ad.
@@ -78,7 +89,7 @@ VIBE: ${vibe}
 KEYWORDS: ${keywords.join(", ") || "none"}
 AVAILABLE COLORS: ${colorsList || "Use professional defaults"}
 AVAILABLE FONTS: ${fontsList || "Use Arial, Helvetica"}
-
+${briefLines ? briefLines + "\n" : ""}
 DESIGN RULES (CRITICAL - FOLLOW EXACTLY):
 
 1. COLORS - Use these EXACT patterns:

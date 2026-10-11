@@ -102,9 +102,23 @@ export interface CreativeBrief {
   referenceAssetPaths: string[];
   screenshotPaths: string[];
   toneOverride?: string;
+  callToAction?: string;
+  requiredDisclaimers?: string;
+  adDirection?: string;
 }
 
 // ── Ad Job ─────────────────────────────────────────────────────
+
+/**
+ * A format spec that may name a non-catalog platform ("custom").
+ * Only used for job-local custom formats (from Unity Core import);
+ * catalog specs keep the strict Platform union.
+ * Custom spec id convention: custom-<platform>-<formatName> slugified,
+ * NO size in the id (the exporter appends -<W>x<H> to filenames).
+ */
+export type CustomAdFormatSpec = Omit<AdFormatSpec, "platform"> & {
+  platform: Platform | "custom";
+};
 
 export interface AdJob {
   id: string;
@@ -114,6 +128,11 @@ export interface AdJob {
   brandKitId: string;
   requestedFormatIds: string[];
   creativeBrief: CreativeBrief;
+  /**
+   * Job-local formats not present in FORMAT_CATALOG.
+   * Ids follow: custom-<platform>-<formatName> slugified (no size).
+   */
+  customFormatSpecs?: CustomAdFormatSpec[];
   status:
     | "queued"
     | "in-progress"
@@ -155,6 +174,15 @@ export interface VibeforgeProject {
   projectVersion: number;
   /** Absolute path to the project's root folder. Not persisted inside the file itself. */
   rootPath?: string;
+  /** Present when the project was imported from a Unity Core campaign. */
+  unity?: {
+    adIntakeId: string;
+    campaignId: string;
+    campaignName?: string;
+    campaignFolder: string;
+    manifestSchemaVersion: string;
+    importedAt: string;
+  };
 }
 
 export interface ProjectSummary {

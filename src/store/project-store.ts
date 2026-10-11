@@ -64,7 +64,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         ...input,
         parentDirectory,
       });
-      set({ activeProject: project, activeBrandKit: brandKit, isLoading: false });
+      set({ activeProject: project, activeBrandKit: brandKit, jobs: [], isLoading: false });
       await get().refreshRecentProjects();
       return true;
     } catch (err) {
@@ -82,7 +82,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         return false;
       }
       const { project, brandKit } = await window.vibeforge.openProject(rootPath);
-      set({ activeProject: project, activeBrandKit: brandKit, isLoading: false });
+      set({ activeProject: project, activeBrandKit: brandKit, jobs: [], isLoading: false });
       await get().refreshRecentProjects();
       return true;
     } catch (err) {
@@ -95,7 +95,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { project, brandKit } = await window.vibeforge.openProject(rootPath);
-      set({ activeProject: project, activeBrandKit: brandKit, isLoading: false });
+      set({ activeProject: project, activeBrandKit: brandKit, jobs: [], isLoading: false });
       await get().refreshRecentProjects();
       return true;
     } catch (err) {

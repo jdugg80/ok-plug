@@ -1,8 +1,8 @@
-import type { AdFormatSpec, AdDesignResult } from "@/types/domain";
+import type { AdFormatSpec, AdDesignResult, CustomAdFormatSpec } from "@/types/domain";
 import styles from "./AdCanvas.module.css";
 
 export interface AdCanvasProps {
-  formatSpec: AdFormatSpec;
+  formatSpec: AdFormatSpec | CustomAdFormatSpec;
   design: AdDesignResult;
   imageUrl?: string;
   logoUrl?: string;
