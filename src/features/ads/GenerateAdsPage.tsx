@@ -28,11 +28,6 @@ export function GenerateAdsPage() {
   const [error, setError] = useState<string | null>(null);
   const [generatedAds, setGeneratedAds] = useState<GeneratedAd[]>([]);
 
-  // Export state
-  const [exportingFormatId, setExportingFormatId] = useState<string | null>(null);
-  const [exportedPaths, setExportedPaths] = useState<Record<string, string>>({});
-  const [exportErrors, setExportErrors] = useState<Record<string, string>>({});
-
   if (!activeProject || !activeBrandKit) {
     return (
       <div className={styles.page}>
@@ -57,8 +52,6 @@ export function GenerateAdsPage() {
     setIsGenerating(true);
     setError(null);
     setGeneratedAds([]);
-    setExportedPaths({});
-    setExportErrors({});
     setProgress("Preparing brand context...");
 
     if (!activeBrandKit) {
@@ -118,39 +111,6 @@ export function GenerateAdsPage() {
 
     if (results.length === 0) {
       setError("Generation failed. Check your API key in Settings.");
-    }
-  }
-
-  async function handleExport(ad: GeneratedAd) {
-    setExportingFormatId(ad.formatId);
-    setExportErrors((prev) => {
-      const next = { ...prev };
-      delete next[ad.formatId];
-      return next;
-    });
-
-    try {
-      const filePath = await window.vibeforge.exportAsset(
-        ad.design,
-        { width: ad.spec.width, height: ad.spec.height, id: ad.spec.id },
-        activeBrandKit?.fonts
-      );
-      setExportedPaths((prev) => ({ ...prev, [ad.formatId]: filePath }));
-    } catch (err) {
-      setExportErrors((prev) => ({
-        ...prev,
-        [ad.formatId]: (err as Error).message,
-      }));
-    } finally {
-      setExportingFormatId(null);
-    }
-  }
-
-  async function handleExportAll() {
-    for (const ad of generatedAds) {
-      if (!exportedPaths[ad.formatId]) {
-        await handleExport(ad);
-      }
     }
   }
 
@@ -219,16 +179,9 @@ export function GenerateAdsPage() {
         <div className={styles.results}>
           <div className={styles.resultsHeader}>
             <h2 className={styles.resultsTitle}>Generated Ads</h2>
-            <button
-              className="vf-btn vf-btn--primary"
-              onClick={handleExportAll}
-              disabled={isGenerating}
-            >
-              Export All as PNG
-            </button>
           </div>
           <p className={styles.hint}>
-            Each ad is exported as a watermarked PNG at retina resolution.
+            Open a job to approve and export.
           </p>
           <div className={styles.grid}>
             {generatedAds.map((ad) => (
@@ -238,28 +191,6 @@ export function GenerateAdsPage() {
                   design={ad.design}
                   imageUrl={ad.imageUrl}
                 />
-                <div className={styles.exportActions}>
-                  {exportedPaths[ad.formatId] ? (
-                    <span className={styles.exportSuccess}>
-                      Exported to renders/
-                    </span>
-                  ) : (
-                    <button
-                      className="vf-btn"
-                      onClick={() => handleExport(ad)}
-                      disabled={exportingFormatId === ad.formatId}
-                    >
-                      {exportingFormatId === ad.formatId
-                        ? "Rendering..."
-                        : "Export PNG"}
-                    </button>
-                  )}
-                  {exportErrors[ad.formatId] && (
-                    <span className={styles.exportError}>
-                      {exportErrors[ad.formatId]}
-                    </span>
-                  )}
-                </div>
               </div>
             ))}
           </div>

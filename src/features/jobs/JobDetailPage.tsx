@@ -4,6 +4,8 @@ import { useProjectStore } from "@/store/project-store";
 import { AdCanvas } from "@/components/AdCanvas";
 import { FORMAT_CATALOG } from "@/types/domain";
 import type { AdJob, AssetRecord, AdDesignResult, AdFormatSpec, CustomAdFormatSpec } from "@/types/domain";
+import type { ExportAssetResult } from "../../../electron/main/services/export-service";
+import { ipcErrorMessage } from "@/lib/ipc-error";
 import styles from "./JobDetailPage.module.css";
 
 type AnyFormatSpec = AdFormatSpec | CustomAdFormatSpec;
@@ -53,6 +55,7 @@ export function JobDetailPage() {
     loadJobs,
     generateFromJob,
     updateJobStatus,
+    setActiveProject,
   } = useProjectStore();
 
   const [job, setJob] = useState<AdJob | undefined>(undefined);
@@ -60,7 +63,8 @@ export function JobDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState("");
   const [exportingAssetId, setExportingAssetId] = useState<string | null>(null);
-  const [exportedPaths, setExportedPaths] = useState<Record<string, string>>({});
+  const [exportedResults, setExportedResults] = useState<Record<string, ExportAssetResult>>({});
+  const [exportErrors, setExportErrors] = useState<Record<string, string>>({});
 
   // Load job + assets
   const loadJobData = useCallback(async () => {
@@ -118,25 +122,62 @@ export function JobDetailPage() {
   }
 
   async function handleExport(assetId: string, design: AdDesignResult, spec: AnyFormatSpec) {
+    if (!activeProject?.rootPath || !job) return;
     setExportingAssetId(assetId);
+    setExportErrors((prev) => {
+      const next = { ...prev };
+      delete next[assetId];
+      return next;
+    });
     try {
-      const filePath = await window.vibeforge.exportAsset(
+      // outputDir = <campaignFolder>\exports only when unity.campaignFolder exists
+      let outputDir: string | undefined;
+      if (activeProject.unity?.campaignFolder) {
+        outputDir = `${activeProject.unity.campaignFolder}\\exports`;
+      }
+      const result = await window.vibeforge.exportAsset(
         design,
         { width: spec.width, height: spec.height, id: spec.id },
-        activeBrandKit?.fonts
+        activeBrandKit?.fonts,
+        outputDir,
+        activeProject.rootPath,
+        job.id,
+        assetId
       );
-      setExportedPaths((prev) => ({ ...prev, [assetId]: filePath }));
+      setExportedResults((prev) => ({ ...prev, [assetId]: result }));
     } catch (err) {
-      console.error("Export failed:", err);
+      setExportErrors((prev) => ({
+        ...prev,
+        [assetId]: ipcErrorMessage(err),
+      }));
     } finally {
       setExportingAssetId(null);
     }
   }
 
   async function handleApprove() {
-    if (!job) return;
+    if (!job || !activeProject || !activeBrandKit) return;
     await updateJobStatus(job.id, "approved");
+    const jobAssets = activeProject.assets.filter(
+      (a) => a.jobId === job.id && (a.status === "ready" || a.status === "review")
+    );
+    let project = activeProject;
+    for (const asset of jobAssets) {
+      project = await window.vibeforge.updateAssetStatus(
+        project,
+        activeBrandKit,
+        asset.id,
+        "approved"
+      );
+    }
+    setActiveProject(project);
     setJob({ ...job, status: "approved" });
+    setAssetsWithDesigns((prev) =>
+      prev.map((entry) => {
+        const updated = project.assets.find((a) => a.id === entry.asset.id);
+        return updated ? { ...entry, asset: updated } : entry;
+      })
+    );
   }
 
   return (
@@ -241,9 +282,11 @@ export function JobDetailPage() {
 
                 {design && spec && (
                   <div className={styles.assetActions}>
-                    {exportedPaths[asset.id] ? (
-                      <span className={styles.exportSuccess}>Exported</span>
-                    ) : (
+                    {exportedResults[asset.id] ? (
+                      <span className={styles.exportSuccess}>
+                        Exported: {exportedResults[asset.id].filePath} ({exportedResults[asset.id].width}×{exportedResults[asset.id].height})
+                      </span>
+                    ) : asset.status === "approved" ? (
                       <button
                         className="vf-btn"
                         onClick={() => handleExport(asset.id, design, spec)}
@@ -251,6 +294,12 @@ export function JobDetailPage() {
                       >
                         {exportingAssetId === asset.id ? "Rendering..." : "Export PNG"}
                       </button>
+                    ) : null}
+                    {exportedResults[asset.id]?.warnings.map((w, i) => (
+                      <span key={i} className={styles.exportWarning}>{w}</span>
+                    ))}
+                    {exportErrors[asset.id] && (
+                      <span className={styles.exportError}>{exportErrors[asset.id]}</span>
                     )}
                   </div>
                 )}

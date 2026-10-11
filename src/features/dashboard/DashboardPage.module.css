@@ -45,6 +45,12 @@
   font-size: 13px;
 }
 
+.importError {
+  color: #ff6b6b;
+  font-size: 12px;
+  margin: 0;
+}
+
 .projectList {
   list-style: none;
   margin: 0;

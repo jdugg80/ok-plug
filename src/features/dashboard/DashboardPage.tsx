@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProjectStore } from "@/store/project-store";
 import { NewProjectDialog } from "./NewProjectDialog";
+import { UnityImportSummaryDialog } from "./UnityImportSummaryDialog";
+import { ipcErrorMessage } from "@/lib/ipc-error";
+import type { UnityImportResult } from "../../../electron/preload/preload";
 import styles from "./DashboardPage.module.css";
 
 export function DashboardPage() {
@@ -10,8 +13,12 @@ export function DashboardPage() {
   const refreshRecentProjects = useProjectStore((s) => s.refreshRecentProjects);
   const openProjectViaDialog = useProjectStore((s) => s.openProjectViaDialog);
   const openProjectByPath = useProjectStore((s) => s.openProjectByPath);
+  const loadJobs = useProjectStore((s) => s.loadJobs);
   const isLoading = useProjectStore((s) => s.isLoading);
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<UnityImportResult | null>(null);
 
   useEffect(() => {
     refreshRecentProjects();
@@ -25,6 +32,37 @@ export function DashboardPage() {
   async function handleOpenRecent(rootPath: string) {
     const opened = await openProjectByPath(rootPath);
     if (opened) navigate("/brand-kit");
+  }
+
+  async function handleImportUnityCore() {
+    setIsImporting(true);
+    setImportError(null);
+    try {
+      const result = await window.vibeforge.importFromUnityCore();
+      setImportResult(result);
+      await refreshRecentProjects();
+    } catch (err) {
+      const message = ipcErrorMessage(err);
+      if (
+        !message.includes("No campaign folder selected.") &&
+        !message.includes("No project location selected.")
+      ) {
+        setImportError(message);
+      }
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
+  async function handleOpenImportedProject() {
+    if (!importResult?.project.rootPath) return;
+    const rootPath = importResult.project.rootPath;
+    setImportResult(null);
+    const opened = await openProjectByPath(rootPath);
+    if (opened) {
+      await loadJobs();
+      navigate("/brand-kit");
+    }
   }
 
   return (
@@ -48,8 +86,17 @@ export function DashboardPage() {
           >
             New Project
           </button>
+          <button
+            className="vf-btn"
+            onClick={handleImportUnityCore}
+            disabled={isLoading || isImporting}
+          >
+            {isImporting ? "Importing…" : "Import from Unity Core…"}
+          </button>
         </div>
       </div>
+
+      {importError && <p className={styles.importError}>{importError}</p>}
 
       <section>
         <h2 className={styles.sectionTitle}>Recent Projects</h2>
@@ -86,6 +133,14 @@ export function DashboardPage() {
             setShowNewProjectDialog(false);
             navigate("/brand-kit");
           }}
+        />
+      )}
+
+      {importResult && (
+        <UnityImportSummaryDialog
+          result={importResult}
+          onClose={() => setImportResult(null)}
+          onOpenProject={handleOpenImportedProject}
         />
       )}
     </div>

@@ -9,6 +9,7 @@ import type { GenerateTextInput, GeneratedCopy } from "../main/services/ai-text-
 import type { AdDesignInput, AdDesignResult } from "../main/services/ai-ad-design-service";
 import type { FontChoice } from "../shared/types";
 import type { SkippedFormat } from "../main/services/unity-import-service";
+import type { ExportAssetResult } from "../main/services/export-service";
 
 export interface UnityImportResult {
   project: VibeforgeProject;
@@ -148,7 +149,7 @@ const vibeforgeApi = {
     projectRootPath?: string,
     jobId?: string,
     assetId?: string
-  ): Promise<string> =>
+  ): Promise<ExportAssetResult> =>
     ipcRenderer.invoke(IpcChannels.AssetExport, design, formatSpec, fonts, outputDir, projectRootPath, jobId, assetId),
 
   // ── Unity Core Import ────────────────────────────────

@@ -29,6 +29,7 @@ interface ProjectStoreState {
   openProjectViaDialog: () => Promise<boolean>;
   openProjectByPath: (rootPath: string) => Promise<boolean>;
   updateBrandKit: (partial: Partial<BrandKit>) => void;
+  setActiveProject: (project: VibeforgeProject) => void;
   saveActiveProject: () => Promise<void>;
   closeProject: () => void;
   createAdJob: (input: NewAdJobInput) => Promise<void>;
@@ -116,6 +117,10 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       autosaveTimer = null;
       get().saveActiveProject();
     }, AUTOSAVE_DELAY_MS);
+  },
+
+  setActiveProject: (project) => {
+    set({ activeProject: project });
   },
 
   saveActiveProject: async () => {
