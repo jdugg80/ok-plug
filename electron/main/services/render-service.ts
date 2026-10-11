@@ -16,8 +16,10 @@ async function getBrowser(): Promise<any> {
   if (browserInstance && browserInstance.connected) {
     return browserInstance;
   }
-  // Dynamic import required — puppeteer is ESM-only but we compile to CJS
-  const puppeteer = (await import("puppeteer")).default;
+  const dynamicImport = new Function("specifier", "return import(specifier)") as (
+    specifier: string
+  ) => Promise<{ default: any }>;
+  const puppeteer = (await dynamicImport("puppeteer")).default;
   browserInstance = await puppeteer.launch({
     headless: true,
     args: [
