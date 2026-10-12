@@ -45,15 +45,15 @@
   <div class="stats-bar">
     <div class="stat">
       <span class="stat-label">Total Commits</span>
-      <span class="stat-value">8</span>
+      <span class="stat-value">17</span>
     </div>
     <div class="stat">
       <span class="stat-label">Active Weeks</span>
-      <span class="stat-value">4</span>
+      <span class="stat-value">5</span>
     </div>
     <div class="stat">
       <span class="stat-label">Estimated Hours</span>
-      <span class="stat-value">10</span>
+      <span class="stat-value">15</span>
     </div>
     <div class="stat">
       <span class="stat-label">Clients Live</span>
@@ -177,6 +177,51 @@
       <div class="entry win">
         <span class="entry-date">2026-09-18</span>
         <span class="entry-text">Mapped ad_intake DB schema (migration 097) to Vibeforge BrandKit + AdJob. Three source types (manual, website_inquiry, website_job_request) mapped to brand context. Status flow (submitted→scanned→quoted→approved/active→completed→archived) mapped to job pipeline. BrandColor type error fixed via makeBrandColor() helper. IPC handlers corrected to only import existing functions. Build compiles with 0 TypeScript errors.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Era: Unity Core Integration -->
+  <div class="era-divider">Era 3 — Unity Core Integration (Oct 2026)</div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 8: Unity Core → Vibeforge Design Push (Session 9 — Oct 10, 2026)</div>
+    <div class="rail">
+      <div class="entry bug">
+        <span class="entry-date">2026-10-10</span>
+        <span class="entry-text">WIP snapshot: AI provider, render pipeline, job UI, intake service in place but IPC handlers partially stubbed — app not yet functional.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-10-10</span>
+        <span class="entry-text">Restored real IPC handlers and wired the AI, asset, and settings channels, replacing the stubbed snapshot.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-10-10</span>
+        <span class="entry-text">Exact-pixel PNG export: approval gate requires the asset to be approved ON DISK; renders at scale 1; verifies exact width × height before writing; never overwrites (numeric suffix); writes exports/export-manifest.json.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-10-10</span>
+        <span class="entry-text">Added Unity Core import types, extended creative brief, and custom format specs with id pattern custom-&lt;platform&gt;-&lt;formatName&gt;.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-10-10</span>
+        <span class="entry-text">Importer plus unity:import-manifest — "Import from Unity Core..." on the Dashboard reads manifest.json (1.0 and 1.1), creates one project per unity.adIntakeId, fills empty brand fields, adds new formats and assets, and never overwrites designs, approvals, or edits. Video formats are listed as skipped; contact data is never read or copied.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-10-10</span>
+        <span class="entry-text">"Import from Unity Core" button on the Dashboard and export to &lt;campaignFolder&gt;\exports whenever a unity block exists.</span>
+      </div>
+      <div class="entry bug">
+        <span class="entry-date">2026-10-10</span>
+        <span class="entry-text">Bug: puppeteer is ESM-only and Electron 33's Node 20 cannot require() it — render-service now loads it through a runtime import(). Proof must be run inside Electron (npx electron), not plain Node.</span>
+      </div>
+      <div class="entry win">
+        <span class="entry-date">2026-10-10</span>
+        <span class="entry-text">Verified by Joe end to end: import → AI generation → approve → export at exact size → upload via CRM → client portal shows the PNG → portal feedback arrives in Unity Core.</span>
+      </div>
+      <div class="entry decision">
+        <span class="entry-date">2026-10-10</span>
+        <span class="entry-text">Open follow-ups: custom formats display as "custom &lt;Platform&gt; &lt;Format&gt;"; very wide banners (970x90, 970x250) lay out badly; video formats can export as still PNGs; job approval is all-or-nothing; intake-service.ts still has fake default colors/ids.</span>
       </div>
     </div>
   </div>

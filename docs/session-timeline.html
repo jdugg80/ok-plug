@@ -46,15 +46,15 @@
   <div class="stats-bar">
     <div class="stat">
       <span class="stat-label">Total Sessions</span>
-      <span class="stat-value">6</span>
+      <span class="stat-value">9</span>
     </div>
     <div class="stat">
       <span class="stat-label">Total Commits</span>
-      <span class="stat-value">8</span>
+      <span class="stat-value">17</span>
     </div>
     <div class="stat">
       <span class="stat-label">Estimated Hours</span>
-      <span class="stat-value">10</span>
+      <span class="stat-value">15</span>
     </div>
   </div>
 
@@ -143,16 +143,65 @@
     </div>
   </div>
 
+  <div class="session">
+    <div class="session-header">Session 8</div>
+    <div class="session-date">2026-09-18 (evening)</div>
+    <div class="timeline">
+      <div class="entry">
+        <span class="entry-hash">aaf8216</span>
+        <span class="entry-msg">docs: session close — Phase 3: ad_intake DB schema mapped to BrandKit/AdJob; BrandColor type fixed; IPC handlers corrected; build compiles 0 errors</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="session">
+    <div class="session-header">Session 9</div>
+    <div class="session-date">2026-10-10</div>
+    <div class="timeline">
+      <div class="entry">
+        <span class="entry-hash">8b53420</span>
+        <span class="entry-msg">WIP snapshot: AI provider, render pipeline, job UI, intake service (IPC handlers partially stubbed - app not yet functional)</span>
+      </div>
+      <div class="entry">
+        <span class="entry-hash">b8b65c8</span>
+        <span class="entry-msg">Restore real IPC handlers and wire AI, asset, and settings channels</span>
+      </div>
+      <div class="entry">
+        <span class="entry-hash">e8b2f51</span>
+        <span class="entry-msg">Add exact-pixel PNG export with approval gate and export manifest</span>
+      </div>
+      <div class="entry">
+        <span class="entry-hash">1cca567</span>
+        <span class="entry-msg">Add Unity Core import types, extended creative brief, and custom format specs</span>
+      </div>
+      <div class="entry">
+        <span class="entry-hash">b88638f</span>
+        <span class="entry-msg">Import Unity Core manifest 1.x into a project with custom formats</span>
+      </div>
+      <div class="entry">
+        <span class="entry-hash">791488b</span>
+        <span class="entry-msg">Add Import from Unity Core button and export to campaign folder</span>
+      </div>
+      <div class="entry">
+        <span class="entry-hash">318587e</span>
+        <span class="entry-msg">Load puppeteer via runtime import() so rendering works in Electron's CJS main</span>
+      </div>
+    </div>
+  </div>
+
   <div class="narrative">
-    <h3>Session 7 — Sep 18, 2026: ad_intake DB → BrandKit/AdJob Mapping</h3>
-    <p>Completed Phase 3 of the Vibeforge build-out: mapped ad_intake DB schema (migration 097) to Vibeforge BrandKit + AdJob.</p>
+    <h3>Session 9 — Oct 10, 2026: Unity Core to Vibeforge Design Push</h3>
+    <p>Took the app from a non-functional WIP snapshot to a Joe-verified end-to-end loop: import from Unity Core, generate, approve, export at exact pixel size, upload via CRM, and receive portal feedback back in Unity Core.</p>
     <ul>
-      <li><strong>Schema mapping:</strong> Three source types (manual, website_inquiry, website_job_request) mapped to brand context labels. Request type (simple_asset vs campaign) mapped to format IDs (1 or 3 formats). Status flow (submitted→scanned→quoted→approved/active→completed→archived) mapped to job pipeline stages.</li>
-      <li><strong>BrandColor type fix:</strong> Created makeBrandColor() helper returning proper BrandColor objects with id, hex, and role fields. Added missing fonts property to BrandKit return.</li>
-      <li><strong>IPC handler fixes:</strong> Corrected imports to only reference functions that exist in intake-service.ts. Added "intake:migrate" handler for mapping DB rows to BrandKit + AdJob + Project.</li>
-      <li><strong>Build verification:</strong> `npm run build` compiles with 0 TypeScript errors across all 91 modules.</li>
+      <li><strong>Real IPC restored:</strong> Handlers put back and the AI, asset, and settings channels wired through, replacing the partially stubbed snapshot so the app actually runs end to end.</li>
+      <li><strong>Exact-pixel PNG export:</strong> Approval gate requires the asset to be approved ON DISK; renders at scale 1; verifies exact width × height before writing; never overwrites (numeric suffix); records every render in exports/export-manifest.json.</li>
+      <li><strong>Import surface:</strong> Unity Core import types, an extended creative brief, and custom format specs identified as custom-&lt;platform&gt;-&lt;formatName&gt;.</li>
+      <li><strong>Unity Core importer:</strong> unity:import-manifest drives "Import from Unity Core..." on the Dashboard. It reads manifest.json (1.0 and 1.1), creates one project per unity.adIntakeId, fills empty brand fields, adds new formats and assets, and never overwrites designs, approvals, or edits. Video formats are reported as skipped; contact data is never read or copied.</li>
+      <li><strong>Campaign export folder:</strong> Renders land in &lt;campaignFolder&gt;\exports whenever a unity block exists.</li>
+      <li><strong>Electron-only puppeteer fix:</strong> puppeteer is ESM-only and Electron 33's Node 20 cannot require() it, so render-service now loads it through a runtime import(). The proof has to be run inside Electron (npx electron), not plain Node.</li>
+      <li><strong>Joe's end-to-end verification:</strong> import → AI generation → approve → export at exact size → upload via CRM → client portal shows the PNG → portal feedback arrives in Unity Core.</li>
+      <li><strong>Open follow-ups:</strong> custom formats display as "custom &lt;Platform&gt; &lt;Format&gt;"; very wide banners (970x90, 970x250) lay out badly; video formats can export as still PNGs; job approval is all-or-nothing; intake-service.ts still has fake default colors/ids.</li>
     </ul>
-    <li><strong>Key design decision:</strong> ad_intake DB rows map to standalone BrandKit + AdJob objects that integrate with the existing Vibeforge job generation pipeline.</li>
   </div>
 </body>
 </html>

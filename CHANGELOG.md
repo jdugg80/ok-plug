@@ -23,6 +23,22 @@ Format based on [Keep a Changelog](https://keepachchangeli.com/).
 - Orphaned `src/main.ts` (legacy template file)
 - Orphaned `ok-plug/` sub-project directory (duplicate template)
 
+## [0.4.0] - 2026-10-10
+
+### Added
+- **Real IPC Handlers:** Restored the full IPC handler surface and wired the AI, asset, and settings channels, replacing the partially stubbed WIP snapshot so the app runs end to end.
+- **Exact-Pixel PNG Export:** Approval gate requires the asset to be approved ON DISK; renders at scale 1; verifies exact width × height before writing; never overwrites (numeric suffix); writes `exports/export-manifest.json`.
+- **Unity Core Import Surface:** Import types, extended creative brief, and custom format specs with id pattern `custom-<platform>-<formatName>`.
+- **Unity Core Importer:** `unity:import-manifest` plus the "Import from Unity Core..." entry point on the Dashboard. Reads `manifest.json` (1.0 and 1.1), creates one project per `unity.adIntakeId`, fills empty brand fields, adds new formats and assets, and never overwrites designs, approvals, or edits. Video formats are listed as skipped; contact data is never read or copied.
+- **Campaign Export Folder:** Renders export to `<campaignFolder>\exports` whenever a unity block exists.
+
+### Fixed
+- **Puppeteer in Electron:** puppeteer is ESM-only and Electron 33's Node 20 cannot `require()` it. `render-service` now loads it through a runtime `import()`. Proof must be run inside Electron (`npx electron`), not plain Node.
+
+### Decisions
+- Verified by Joe end to end: import → AI generation → approve → export at exact size → upload via CRM → client portal shows the PNG → portal feedback arrives in Unity Core.
+- Open follow-ups: custom formats display as `"custom <Platform> <Format>"`; very wide banners (970x90, 970x250) lay out badly; video formats can export as still PNGs; job approval is all-or-nothing; intake-service.ts still has fake default colors/ids.
+
 ## [0.3.0] - 2026-09-18
 
 ### Added
