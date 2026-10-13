@@ -9,6 +9,7 @@ import path from "path";
 import type { AdJob, AssetRecord, VibeforgeProject, BrandKit } from "../../shared/types";
 import type { AdDesignResult } from "./ai-ad-design-service";
 import { generateAdDesign, type AdDesignInput } from "./ai-ad-design-service";
+import { buildAdDesignInput } from "../../shared/build-ad-design-input";
 import { updateAdJobStatus } from "./job-service";
 import { FORMAT_CATALOG } from "../../shared/format-catalog";
 
@@ -78,22 +79,12 @@ export async function generateFromJob(
     asset.updatedAt = new Date().toISOString();
 
     try {
-      // Build keywords from creative brief + brand context
-      const keywords = [
-        ...job.creativeBrief.keywords,
-        brandKit.businessName,
-        job.creativeBrief.toneOverride || brandKit.toneTags.join(", "),
-        brandKit.vibeTags.join(", "),
-      ].filter(Boolean);
-
-      const input: AdDesignInput = {
-        formatSpec: formatSpec!,
+      const input: AdDesignInput = buildAdDesignInput(
+        formatSpec!,
         brandKit,
-        keywords,
-        callToAction: job.creativeBrief.callToAction,
-        requiredDisclaimers: job.creativeBrief.requiredDisclaimers,
-        adDirection: job.creativeBrief.adDirection,
-      };
+        job.creativeBrief,
+        { projectRootPath: project.rootPath }
+      );
 
       // Generate design via AI
       const design: AdDesignResult = await generateAdDesign(input);

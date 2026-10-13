@@ -37,6 +37,8 @@ export const IpcChannels = {
 
   // Asset operations
   AssetUpdateStatus: "asset:update-status",
+  AssetImport: "asset:import",
+  AssetReadImage: "asset:read-image",
 
   // AI Text Generation (Step 5)
   AiGenerateCopy: "ai:generate-copy",

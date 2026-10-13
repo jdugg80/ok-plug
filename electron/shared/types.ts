@@ -43,6 +43,20 @@ export interface SourceAsset {
   width?: number;
   height?: number;
   addedAt: string;
+  /** Which background this artwork is meant to sit on. Defaults to "any". */
+  variant?: "onLight" | "onDark" | "any";
+  /** At most one logo in a BrandKit should carry this. */
+  isPrimary?: boolean;
+}
+
+/**
+ * Contact details the client wants printed on ads. Entered by the user in
+ * Vibeforge only — never populated from an intake/manifest import.
+ */
+export interface AdContact {
+  phone?: string;
+  email?: string;
+  address?: string;
 }
 
 export interface BrandKit {
@@ -61,6 +75,12 @@ export interface BrandKit {
   scannedAt?: string;
   createdAt: string;
   updatedAt: string;
+  /** Optional from Brand Kit v2; defaulted on load by normalizeBrandKit. */
+  taglines?: string[];
+  /** Optional from Brand Kit v2; defaulted on load by normalizeBrandKit. */
+  adContact?: AdContact;
+  /** Optional from Brand Kit v2; defaulted on load by normalizeBrandKit. */
+  finePrint?: string[];
 }
 
 // ── Asset Record ───────────────────────────────────────────────
@@ -153,6 +173,8 @@ export interface ExportManifest {
     filePath: string;
     fileSizeBytes: number;
     approvedAt: string;
+    /** Non-fatal render problems (fine print truncated, logo skipped, ...). */
+    warnings?: string[];
   }[];
   deliveredAt?: string;
 }

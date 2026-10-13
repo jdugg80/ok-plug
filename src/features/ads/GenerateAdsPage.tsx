@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useProjectStore } from "@/store/project-store";
 import { FormatMultiSelect } from "@/components/FormatMultiSelect";
-import { AdCanvas } from "@/components/AdCanvas";
-import { FORMAT_CATALOG } from "@/types/domain";
+import { AdCanvas, usePreviewLogos } from "@/components/AdCanvas";
+import { FORMAT_CATALOG, buildAdDesignInput, combineFinePrint } from "@/types/domain";
 import type { AdFormatSpec, AdDesignResult, CustomAdFormatSpec } from "@/types/domain";
 import styles from "./GenerateAdsPage.module.css";
 
@@ -27,6 +27,9 @@ export function GenerateAdsPage() {
   const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [generatedAds, setGeneratedAds] = useState<GeneratedAd[]>([]);
+
+  // Must run before any early return — resolves logo bytes for the previews.
+  const logoDataUris = usePreviewLogos(activeProject?.rootPath, activeBrandKit?.logos);
 
   if (!activeProject || !activeBrandKit) {
     return (
@@ -60,6 +63,15 @@ export function GenerateAdsPage() {
       return;
     }
 
+    // activeProject is narrowed in the component body, but not across the
+    // function boundary — re-check here for the logo resolution path.
+    const projectRootPath = activeProject?.rootPath;
+    if (!projectRootPath) {
+      setError("No project loaded.");
+      setIsGenerating(false);
+      return;
+    }
+
     const results: GeneratedAd[] = [];
 
     for (let i = 0; i < selectedFormats.length; i++) {
@@ -74,12 +86,17 @@ export function GenerateAdsPage() {
       setProgress(`Designing ${spec.platform} ${spec.placement}... (${i + 1}/${selectedFormats.length})`);
 
       try {
-        // Generate complete ad design
-        const design = await window.vibeforge.generateAdDesign({
-          formatSpec: spec,
-          brandKit: activeBrandKit,
-          keywords: [brandContext.name, brandContext.tone, brandContext.vibe],
-        });
+        // Generate complete ad design.
+        //
+        // This path has no job context, so creativeBrief is undefined:
+        // callToAction / requiredDisclaimers / adDirection are NOT set here.
+        // brandKit.logos go into the prompt as metadata only; the app draws
+        // the real logo at render time.
+        const design = await window.vibeforge.generateAdDesign(
+          buildAdDesignInput(spec, activeBrandKit, undefined, {
+            projectRootPath,
+          })
+        );
 
         // Try to fetch stock photo (placeholder for now)
         let imageUrl: string | undefined;
@@ -190,6 +207,15 @@ export function GenerateAdsPage() {
                   formatSpec={ad.spec}
                   design={ad.design}
                   imageUrl={ad.imageUrl}
+                  brand={{
+                    logos: activeBrandKit.logos,
+                    logoDataUris,
+                    fonts: activeBrandKit.fonts,
+                    website: activeBrandKit.website,
+                    adContact: activeBrandKit.adContact,
+                    // No job on this page, so brand fine print only.
+                    finePrint: combineFinePrint(undefined, activeBrandKit.finePrint),
+                  }}
                 />
               </div>
             ))}

@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import { IpcChannels } from "../shared/ipc-channels";
 import type { AiKeyStatus } from "../main/services/secure-storage-service";
 import type { AiProviderName } from "../shared/types";
-import type { VibeforgeProject, BrandKit, ProjectSummary, AdJob, AssetRecord } from "../shared/types";
+import type { VibeforgeProject, BrandKit, ProjectSummary, AdJob, AssetRecord, SourceAsset } from "../shared/types";
 import type { NewProjectInput, ProjectAndBrandKit } from "../main/services/project-service";
 import type { NewAdJobInput } from "../main/services/job-service";
 import type { GenerateTextInput, GeneratedCopy } from "../main/services/ai-text-service";
@@ -109,6 +109,20 @@ const vibeforgeApi = {
     status: AssetRecord["status"]
   ): Promise<VibeforgeProject> =>
     ipcRenderer.invoke(IpcChannels.AssetUpdateStatus, project, brandKit, assetId, status),
+
+  /**
+   * Pick a file and copy it into the project folder.
+   * Returns null when the user cancels the picker.
+   */
+  importAsset: (
+    projectRootPath: string,
+    kind?: SourceAsset["kind"]
+  ): Promise<SourceAsset | null> =>
+    ipcRenderer.invoke(IpcChannels.AssetImport, projectRootPath, kind),
+
+  /** Read a project-relative image as a data URI for <img src>. */
+  readImage: (projectRootPath: string, relativePath: string): Promise<string> =>
+    ipcRenderer.invoke(IpcChannels.AssetReadImage, projectRootPath, relativePath),
 
   // ── Job-Driven Generation ───────────────────────────
 

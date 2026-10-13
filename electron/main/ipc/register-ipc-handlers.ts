@@ -19,6 +19,10 @@ import {
   openProject,
   saveProject,
   listRecentProjects,
+  importAssetIntoProject,
+  readProjectImageAsDataUri,
+  IMPORTABLE_IMAGE_EXTENSIONS,
+  ASSET_IMPORT_MAX_BYTES,
   type NewProjectInput,
   type ProjectAndBrandKit,
 } from "../services/project-service";
@@ -38,7 +42,7 @@ import { generateAdDesign, type AdDesignInput } from "../services/ai-ad-design-s
 import { generateFromJob, loadDesignForResult } from "../services/job-orchestrator";
 import { exportAdToPng } from "../services/export-service";
 import { validateManifest, mapManifest } from "../services/unity-import-service";
-import type { AdJob, AssetRecord } from "../../shared/types";
+import type { AdJob, AssetRecord, SourceAsset } from "../../shared/types";
 
 /**
  * Register all IPC handlers. Called once from main during app ready.
@@ -216,6 +220,53 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
     }
   );
 
+  // Import a user-picked file into the project folder (Brand Kit v2).
+  // The source file is copied, never moved or modified. Returns null on cancel.
+  ipcMain.handle(
+    IpcChannels.AssetImport,
+    async (
+      _event,
+      projectRootPath: string,
+      kind: SourceAsset["kind"] = "logo"
+    ): Promise<SourceAsset | null> => {
+      if (!projectRootPath) {
+        throw new Error("No project root path supplied.");
+      }
+      const options: Electron.OpenDialogOptions = {
+        title: "Choose an image",
+        properties: ["openFile"],
+        filters: [
+          { name: "Images", extensions: [...IMPORTABLE_IMAGE_EXTENSIONS] },
+        ],
+      };
+      const win = getMainWindow();
+      const picked = win
+        ? await dialog.showOpenDialog(win, options)
+        : await dialog.showOpenDialog(options);
+      if (picked.canceled || picked.filePaths.length === 0) {
+        return null;
+      }
+      return importAssetIntoProject(projectRootPath, picked.filePaths[0], kind);
+    }
+  );
+
+  // Reads a project-relative image as a data URI. Guarded against paths
+  // escaping the project folder and against non-image extensions, and capped
+  // by the same 5 MB limit as import.
+  ipcMain.handle(
+    IpcChannels.AssetReadImage,
+    async (_event, projectRootPath: string, relativePath: string): Promise<string> => {
+      if (!projectRootPath) {
+        throw new Error("No project root path supplied.");
+      }
+      const dataUri = await readProjectImageAsDataUri(projectRootPath, relativePath);
+      if (dataUri.length > ASSET_IMPORT_MAX_BYTES * 1.34) {
+        throw new Error("Image is too large to load.");
+      }
+      return dataUri;
+    }
+  );
+
   // ── AI Text Generation (Step 5) ──────────────────────────────
 
   ipcMain.handle(
@@ -276,7 +327,7 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
           "jobId, assetId and projectRootPath are required to export."
         );
       }
-      const { project } = await openProject(projectRootPath);
+      const { project, brandKit } = await openProject(projectRootPath);
       const asset = project.assets.find((a: AssetRecord) => a.id === assetId);
       if (!asset) {
         throw new Error(`Export refused: asset ${assetId} not found in project.`);
@@ -287,6 +338,14 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
         );
       }
 
+      // Job-level disclaimers merge (job-first, deduped) into the brand fine
+      // print that the app draws into the footer. Missing job is not fatal.
+      let requiredDisclaimers: string | undefined;
+      if (jobId) {
+        const job = await getAdJob(projectRootPath, jobId);
+        requiredDisclaimers = job?.creativeBrief?.requiredDisclaimers;
+      }
+
       return exportAdToPng({
         design,
         formatSpec,
@@ -295,6 +354,8 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
         projectRootPath,
         jobId,
         asset,
+        brandKit,
+        requiredDisclaimers,
       });
     }
   );
@@ -399,6 +460,9 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
         if (!brandKit.website && mapped.brandKitPatch.website) {
           brandKit.website = mapped.brandKitPatch.website;
         }
+        if (!brandKit.businessName && mapped.brandKitPatch.businessName) {
+          brandKit.businessName = mapped.brandKitPatch.businessName;
+        }
 
         // Job: find by unityCoreJobId, or create
         const jobs = await listAdJobs(project.rootPath!);
@@ -454,6 +518,7 @@ export function registerIpcHandlers(getMainWindow: () => BrowserWindow | null): 
       });
 
       // Apply brand kit patch (fields were empty on a fresh project)
+      if (mapped.brandKitPatch.businessName) brandKit.businessName = mapped.brandKitPatch.businessName;
       if (mapped.brandKitPatch.colors) brandKit.colors = mapped.brandKitPatch.colors;
       if (mapped.brandKitPatch.vibeTags) brandKit.vibeTags = mapped.brandKitPatch.vibeTags;
       if (mapped.brandKitPatch.toneTags) brandKit.toneTags = mapped.brandKitPatch.toneTags;

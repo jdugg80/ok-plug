@@ -66,23 +66,75 @@
   position: absolute;
   transform: translate(-50%, -50%);
   z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .logoImage {
-  max-width: 80px;
-  max-height: 40px;
+  width: auto;
+  height: auto;
   object-fit: contain;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }
 
-.logoPlaceholder {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border: 1px solid;
-  border-radius: 4px;
-  letter-spacing: 0.05em;
-  opacity: 0.6;
+/* Brand footer: fine print bottom-left, contact block bottom-right.
+   The preview clips rather than measuring — the PNG render is the truth. */
+.footer {
+  position: absolute;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 10;
+  opacity: 0.88;
+  line-height: 1.25;
+}
+
+.footerCompact {
+  align-items: center;
+  gap: 6px;
+}
+
+.fLeft {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  max-height: 2.6em;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footerCompact .fLeft {
+  max-height: none;
+  overflow: visible;
+}
+
+.footerLogo {
+  width: auto;
+  height: auto;
+  max-width: 70%;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.fRight {
+  flex: 0 1 auto;
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sep {
+  opacity: 0.55;
+}
+
+.part {
+  /* Individual parts can be hidden by the PNG auto-fit; the preview keeps
+     them all and relies on overflow:hidden. */
 }
 
 .formatInfo {

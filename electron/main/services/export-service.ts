@@ -8,11 +8,25 @@
 import { promises as fs } from "fs";
 import path from "path";
 import type { AdDesignResult } from "./ai-ad-design-service";
-import type { FontChoice } from "../../shared/types";
+import type { BrandKit, FontChoice } from "../../shared/types";
 import type { ExportManifest, AssetRecord } from "../../shared/types";
-import { renderAdToPng } from "./render-service";
+import { renderAdToPng, type RenderBrand } from "./render-service";
+import { chooseLogo, combineFinePrint } from "../../shared/brand-render";
+import { resolveProjectAssetPath } from "./project-service";
 
 const CRM_UPLOAD_CAP_BYTES = 10 * 1024 * 1024;
+/** Raster logos wider than this are downscaled before embedding. */
+const LOGO_MAX_WIDTH_PX = 600;
+/** SVGs above this size are skipped rather than inlined into the HTML. */
+const SVG_MAX_BYTES = 300 * 1024;
+
+const LOGO_MIME: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+};
 
 // Lazy-loaded sharp (dynamic import — ESM-only package in CJS context)
 let sharpInstance: any = null;
@@ -34,6 +48,10 @@ export interface ExportAssetInput {
   jobId?: string;
   /** Asset being exported. Must be status "approved". */
   asset?: AssetRecord;
+  /** Brand kit supplying the logo + footer furniture. */
+  brandKit?: BrandKit;
+  /** Job-level disclaimers, merged (job-first, deduped) into the brand fine print. */
+  requiredDisclaimers?: string;
 }
 
 export interface ExportAssetResult {
@@ -79,6 +97,85 @@ async function writeUniquePng(
 }
 
 /**
+ * Pick the right logo for this design's background and turn it into a data URI
+ * the Puppeteer HTML can load.
+ *
+ * Raster files are downscaled to LOGO_MAX_WIDTH_PX by sharp so a 5 MB upload
+ * does not end up inside the HTML. SVGs are passed through verbatim, but only
+ * under SVG_MAX_BYTES. Any problem is reported as a warning and the render
+ * continues without a logo — it never fails the export.
+ *
+ * The data URI is never logged.
+ */
+async function resolveLogoDataUri(
+  brandKit: BrandKit | undefined,
+  design: AdDesignResult,
+  projectRootPath: string | undefined,
+  warnings: string[]
+): Promise<string | undefined> {
+  const logos = brandKit?.logos ?? [];
+  if (logos.length === 0) return undefined;
+
+  const choice = chooseLogo(logos, design.backgroundColor || design.backgroundGradient);
+  if (!choice) return undefined;
+  // A2: a mismatched variant used as a last resort must reach the user.
+  if (choice.warning) {
+    warnings.push(`logo: ${choice.warning}`);
+  }
+  const chosen = choice.logo;
+
+  if (!projectRootPath) {
+    warnings.push("logo skipped: no project root path to resolve it from");
+    return undefined;
+  }
+
+  let absolute: string;
+  try {
+    absolute = resolveProjectAssetPath(projectRootPath, chosen.relativePath);
+  } catch (err) {
+    warnings.push(`logo skipped: ${(err as Error).message}`);
+    return undefined;
+  }
+
+  const ext = path.extname(absolute).replace(/^\./, "").toLowerCase();
+  const mime = LOGO_MIME[ext];
+  if (!mime) {
+    warnings.push(`logo skipped: unsupported file type ".${ext}"`);
+    return undefined;
+  }
+
+  let buffer: Buffer;
+  try {
+    buffer = await fs.readFile(absolute);
+  } catch {
+    warnings.push(`logo skipped: could not read ${chosen.originalFileName}`);
+    return undefined;
+  }
+
+  if (ext === "svg") {
+    if (buffer.byteLength > SVG_MAX_BYTES) {
+      warnings.push(
+        `logo skipped: ${chosen.originalFileName} is ${buffer.byteLength} bytes, over the ${SVG_MAX_BYTES}-byte SVG limit`
+      );
+      return undefined;
+    }
+    return `data:${mime};base64,${buffer.toString("base64")}`;
+  }
+
+  try {
+    const sharp = await getSharp();
+    const resized = await sharp(buffer)
+      .resize({ width: LOGO_MAX_WIDTH_PX, withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    return `data:image/png;base64,${resized.toString("base64")}`;
+  } catch {
+    // Fall back to the original bytes rather than losing the logo.
+    return `data:${mime};base64,${buffer.toString("base64")}`;
+  }
+}
+
+/**
  * Export an ad design as an exact width x height PNG.
  * No watermark is applied (watermark-service is for client previews only).
  * Dimensions are verified on the in-memory buffer BEFORE writing; on
@@ -108,9 +205,37 @@ export async function exportAdToPng(input: ExportAssetInput): Promise<ExportAsse
   }
   await fs.mkdir(outDir, { recursive: true });
 
+  // Resolve the brand furniture the app draws itself (logo + footer).
+  const logoDataUri = await resolveLogoDataUri(
+    input.brandKit,
+    design,
+    input.projectRootPath,
+    warnings
+  );
+  const brand: RenderBrand | undefined =
+    logoDataUri ||
+    input.brandKit?.website ||
+    input.brandKit?.adContact ||
+    (input.brandKit?.finePrint ?? []).length > 0 ||
+    input.requiredDisclaimers
+      ? {
+          ...(logoDataUri ? { logoDataUri } : {}),
+          ...(input.brandKit?.website?.trim()
+            ? { website: input.brandKit.website.trim() }
+            : {}),
+          ...(input.brandKit?.adContact ? { adContact: input.brandKit.adContact } : {}),
+          finePrint: combineFinePrint(
+            input.requiredDisclaimers,
+            input.brandKit?.finePrint
+          ),
+        }
+      : undefined;
+
   // Render at scale 1 so the PNG is exactly width x height pixels
   const formatLike = { ...formatSpec } as Parameters<typeof renderAdToPng>[1];
-  const pngBuffer = await renderAdToPng(design, formatLike, fonts, 1);
+  const rendered = await renderAdToPng(design, formatLike, fonts, 1, brand);
+  const pngBuffer = rendered.png;
+  warnings.push(...rendered.warnings);
 
   // Verify pixel size on the in-memory buffer BEFORE writing
   const sharp = await getSharp();
@@ -145,6 +270,7 @@ export async function exportAdToPng(input: ExportAssetInput): Promise<ExportAsse
       filePath,
       fileSizeBytes: stat.size,
       approvedAt,
+      ...(warnings.length > 0 ? { warnings: [...warnings] } : {}),
     });
     if (jobIdWarning) {
       warnings.push(jobIdWarning);

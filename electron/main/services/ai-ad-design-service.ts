@@ -4,8 +4,15 @@
  */
 
 import type { AdFormatSpec } from "../../shared/format-catalog";
-import type { BrandKit, BrandColor, FontChoice, CustomAdFormatSpec } from "../../shared/types";
+import type {
+  BrandKit,
+  BrandColor,
+  FontChoice,
+  CustomAdFormatSpec,
+  SourceAsset,
+} from "../../shared/types";
 import { getActiveProvider } from "./ai-provider";
+import { combineFinePrint } from "../../shared/brand-render";
 
 export interface AdDesignInput {
   formatSpec: AdFormatSpec | CustomAdFormatSpec;
@@ -14,6 +21,70 @@ export interface AdDesignInput {
   callToAction?: string;
   requiredDisclaimers?: string;
   adDirection?: string;
+  /** Kept for callers that already thread it through; the prompt no longer
+   *  needs to read logo files (logos are metadata-only in the prompt now). */
+  projectRootPath?: string;
+  /** Logo metadata for the prompt. Never carries image bytes. */
+  logos?: PromptLogo[];
+}
+
+/**
+ * Logo metadata as the prompt sees it. Filename / variant / primary / size
+ * only - the actual pixels are drawn by the app, never handed to the model.
+ */
+export interface PromptLogo {
+  originalFileName: string;
+  variant: NonNullable<SourceAsset["variant"]>;
+  isPrimary: boolean;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Job-level requiredDisclaimers first, then brand-level fine print, deduped
+ * case-insensitively. Empty lines are dropped.
+ *
+ * This no longer feeds the prompt - it feeds the renderer footer. It lives in
+ * electron/shared/brand-render.ts so the React preview can use it too.
+ */
+export { combineFinePrint } from "../../shared/brand-render";
+
+// Verbatim from the BUILD DOC. Emitted as a single line so it always appears in
+// the prompt as one contiguous string.
+const BRAND_KIT_V2_RULES =
+  "The app draws the logo, website, contact details and fine print from the brand kit. Do NOT write them in headline, subhead or cta; write only your own marketing copy.";
+
+/**
+ * Format one logo line for the prompt: filename | variant | primary | WxH.
+ * No image bytes, ever.
+ */
+function formatLogos(logos: PromptLogo[]): string {
+  return logos
+    .map((logo) => {
+      const dimensions =
+        logo.width && logo.height ? `${logo.width}x${logo.height}` : "size unknown";
+      return (
+        `- ${logo.originalFileName} | ${logo.variant}` +
+        ` | ${logo.isPrimary ? "primary" : "not primary"}` +
+        ` | ${dimensions}`
+      );
+    })
+    .join("\n");
+}
+
+/** "logo", "website", "phone", "2 fine print lines" - which items exist, never their text. */
+function listDrawnItems(brandKit: BrandKit, logos: PromptLogo[], finePrintCount: number): string {
+  const items: string[] = [];
+  if (logos.length > 0) items.push("logo");
+  if (brandKit.website?.trim()) items.push("website");
+  const contact = brandKit.adContact ?? {};
+  if (contact.phone?.trim()) items.push("phone");
+  if (contact.email?.trim()) items.push("email");
+  if (contact.address?.trim()) items.push("address");
+  if (finePrintCount > 0) {
+    items.push(`${finePrintCount} fine print line${finePrintCount === 1 ? "" : "s"}`);
+  }
+  return items.join(", ");
 }
 
 export interface AdDesignResult {
@@ -50,13 +121,10 @@ export interface AdDesignResult {
 }
 
 /**
- * Generate a complete ad design using AI.
- * Returns copy, layout, colors, typography, and image search query.
+ * Pure prompt builder. Reads only `input` - no I/O - so it can be called from
+ * tests and from generateAdDesign alike.
  */
-export async function generateAdDesign(
-  input: AdDesignInput
-): Promise<AdDesignResult> {
-  const provider = await getActiveProvider();
+export function buildDesignPrompt(input: AdDesignInput): string {
   const { formatSpec, brandKit, keywords, callToAction, requiredDisclaimers, adDirection } = input;
 
   // Build brand context
@@ -71,15 +139,57 @@ export async function generateAdDesign(
   const tone = brandKit.toneTags.join(", ") || "professional, trustworthy";
   const vibe = brandKit.vibeTags.join(", ") || "clean, modern";
 
+  // NOTE: requiredDisclaimers is deliberately NOT echoed here. The combined
+  // job+brand fine print is drawn by the app into the footer, so the model
+  // must not also write it into the copy.
   const briefLines = [
     callToAction ? `CALL TO ACTION: ${callToAction}` : null,
-    requiredDisclaimers ? `REQUIRED DISCLAIMERS (include in the design): ${requiredDisclaimers}` : null,
     adDirection ? `AD DIRECTION: ${adDirection}` : null,
   ]
     .filter((line): line is string => line !== null)
     .join("\n");
 
-  const prompt = `You are a professional ad designer creating Facebook/Instagram ads.
+  // --- Brand Kit v2 additions -------------------------------------------
+  // Every section is emitted only when non-empty, so a brand kit with none of
+  // the new fields produces zero extra lines and no empty headings.
+
+  const v2Sections: string[] = [];
+
+  const taglines = (brandKit.taglines ?? []).map((t) => t.trim()).filter(Boolean);
+  if (taglines.length > 0) {
+    v2Sections.push(
+      `TAGLINES (usable verbatim):\n${taglines.map((t) => `- ${t}`).join("\n")}`
+    );
+  }
+
+  const headlines = (brandKit.approvedHeadlines ?? [])
+    .map((h) => h.trim())
+    .filter(Boolean);
+  if (headlines.length > 0) {
+    v2Sections.push(
+      `APPROVED HEADLINES (prefer these verbatim):\n${headlines.map((h) => `- ${h}`).join("\n")}`
+    );
+  }
+
+  const finePrintCount = combineFinePrint(requiredDisclaimers, brandKit.finePrint).length;
+  const logos = input.logos ?? [];
+
+  const drawnItems = listDrawnItems(brandKit, logos, finePrintCount);
+  if (drawnItems) {
+    // ONLY which items exist - never their text. The model is told not to
+    // repeat them so the app's footer stays the single source of truth.
+    v2Sections.push(
+      `DRAWN BY THE APP:\n- ${BRAND_KIT_V2_RULES}\n- Present: ${drawnItems}`
+    );
+  }
+  if (logos.length > 0) {
+    v2Sections.push(`LOGOS:\n${formatLogos(logos)}`);
+  }
+
+  const brandKitBlock = v2Sections.length > 0 ? v2Sections.join("\n\n") + "\n" : "";
+  // ----------------------------------------------------------------------
+
+  return `You are a professional ad designer creating Facebook/Instagram ads.
 
 Generate a COMPLETE ad design for a ${formatSpec.width}×${formatSpec.height} ${formatSpec.platform} ${formatSpec.placement} ad.
 
@@ -89,7 +199,7 @@ VIBE: ${vibe}
 KEYWORDS: ${keywords.join(", ") || "none"}
 AVAILABLE COLORS: ${colorsList || "Use professional defaults"}
 AVAILABLE FONTS: ${fontsList || "Use Arial, Helvetica"}
-${briefLines ? briefLines + "\n" : ""}
+${brandKitBlock}${briefLines ? briefLines + "\n" : ""}
 DESIGN RULES (CRITICAL - FOLLOW EXACTLY):
 
 1. COLORS - Use these EXACT patterns:
@@ -153,6 +263,34 @@ IMPORTANT:
 - All positions are 0.0 to 1.0 (percentages of canvas)
 - Headline MUST be big and bold (48px, weight 800)
 - CTA MUST have background color (accentColor) with white text`;
+}
+
+/**
+ * Map brandKit.logos into prompt metadata. No file I/O and no image bytes -
+ * the app draws the logo itself at render time.
+ */
+function toPromptLogos(input: AdDesignInput): PromptLogo[] {
+  return (input.brandKit.logos ?? []).map((logo) => ({
+    originalFileName: logo.originalFileName,
+    variant: logo.variant ?? "any",
+    isPrimary: logo.isPrimary === true,
+    width: logo.width,
+    height: logo.height,
+  }));
+}
+
+/**
+ * Generate a complete ad design using AI.
+ * Returns copy, layout, colors, typography, and image search query.
+ */
+export async function generateAdDesign(
+  input: AdDesignInput
+): Promise<AdDesignResult> {
+  const provider = await getActiveProvider();
+  const prompt = buildDesignPrompt({
+    ...input,
+    logos: input.logos ?? toPromptLogos(input),
+  });
 
   const text = await provider.generateText(prompt, 1024);
 

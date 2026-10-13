@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProjectStore } from "@/store/project-store";
-import { AdCanvas } from "@/components/AdCanvas";
-import { FORMAT_CATALOG } from "@/types/domain";
+import { AdCanvas, usePreviewLogos } from "@/components/AdCanvas";
+import { FORMAT_CATALOG, combineFinePrint } from "@/types/domain";
 import type { AdJob, AssetRecord, AdDesignResult, AdFormatSpec, CustomAdFormatSpec } from "@/types/domain";
 import type { ExportAssetResult } from "../../../electron/main/services/export-service";
 import { ipcErrorMessage } from "@/lib/ipc-error";
@@ -65,6 +65,9 @@ export function JobDetailPage() {
   const [exportingAssetId, setExportingAssetId] = useState<string | null>(null);
   const [exportedResults, setExportedResults] = useState<Record<string, ExportAssetResult>>({});
   const [exportErrors, setExportErrors] = useState<Record<string, string>>({});
+
+  // Must run before any early return — resolves logo bytes for the previews.
+  const logoDataUris = usePreviewLogos(activeProject?.rootPath, activeBrandKit?.logos);
 
   // Load job + assets
   const loadJobData = useCallback(async () => {
@@ -260,6 +263,18 @@ export function JobDetailPage() {
                 <AdCanvas
                   formatSpec={spec}
                   design={design}
+                  brand={{
+                    logos: activeBrandKit?.logos,
+                    logoDataUris,
+                    fonts: activeBrandKit?.fonts,
+                    website: activeBrandKit?.website,
+                    adContact: activeBrandKit?.adContact,
+                    // Job disclaimers come first, then brand fine print.
+                    finePrint: combineFinePrint(
+                      job?.creativeBrief?.requiredDisclaimers,
+                      activeBrandKit?.finePrint
+                    ),
+                  }}
                 />
               ) : (
                 <div className={styles.placeholder}>

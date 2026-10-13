@@ -42,6 +42,18 @@ export async function generateAdCopy(
       ? `Brand colors: ${brandKit.colors.map((c: { hex: string }) => c.hex).join(", ")}`
       : "";
 
+  // Brand Kit v2: allowed/preferred copy only. Contact details and fine print
+  // deliberately never appear here - they belong in the design prompt.
+  const taglinesContext =
+    (brandKit.taglines ?? []).length > 0
+      ? `Taglines (may be used verbatim):\n${(brandKit.taglines ?? []).map((t) => `- ${t}`).join("\n")}`
+      : "";
+
+  const headlinesContext =
+    (brandKit.approvedHeadlines ?? []).length > 0
+      ? `Approved headlines (prefer these verbatim):\n${(brandKit.approvedHeadlines ?? []).map((h) => `- ${h}`).join("\n")}`
+      : "";
+
   const prompt = `You are an expert ad copywriter for ${brandKit.businessName}.
 
 Generate ad copy for a ${formatSpec.width}×${formatSpec.height} (${formatSpec.ratio}) ${formatSpec.platform} ${formatSpec.placement} ad.
@@ -49,6 +61,8 @@ Generate ad copy for a ${formatSpec.width}×${formatSpec.height} (${formatSpec.r
 Tone: ${tone}
 ${vibeContext}
 ${colorContext}
+${taglinesContext}
+${headlinesContext}
 
 Keywords: ${keywords.join(", ") || "none provided"}
 Phrases to consider: ${phrases.length > 0 ? phrases.join("; ") : "none provided"}

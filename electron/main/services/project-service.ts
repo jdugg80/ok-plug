@@ -2,7 +2,7 @@ import { app } from "electron";
 import { promises as fs } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import type { VibeforgeProject, BrandKit, ProjectSummary } from "../../shared/types";
+import type { VibeforgeProject, BrandKit, ProjectSummary, AdContact, SourceAsset } from "../../shared/types";
 import { CURRENT_PROJECT_VERSION } from "../../shared/types";
 
 const PROJECT_FILE_NAME = "project.vfproject.json";
@@ -94,6 +94,58 @@ export interface NewProjectInput {
   parentDirectory: string;
 }
 
+/**
+ * Trim each entry, drop empties, and dedupe case-insensitively while keeping
+ * the first occurrence's original casing. Non-string entries are discarded.
+ */
+function cleanStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") continue;
+    const trimmed = entry.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+function cleanAdContact(value: unknown): AdContact {
+  const raw = (typeof value === "object" && value !== null ? value : {}) as AdContact;
+  const phone = typeof raw.phone === "string" ? raw.phone.trim() : "";
+  const email = typeof raw.email === "string" ? raw.email.trim() : "";
+  const address = typeof raw.address === "string" ? raw.address.trim() : "";
+  const out: AdContact = {};
+  if (phone) out.phone = phone;
+  if (email) out.email = email;
+  if (address) out.address = address;
+  return out;
+}
+
+/**
+ * Bring a BrandKit up to the Brand Kit v2 shape WITHOUT touching disk.
+ *
+ * Projects saved before v2 arrive with taglines / adContact / finePrint
+ * missing entirely; this fills the defaults so no caller ever sees undefined.
+ * The normalized values are only written back by the user's next normal save —
+ * calling this function never rewrites project.vfproject.json on its own.
+ *
+ * Every field not named below is passed through untouched.
+ */
+export function normalizeBrandKit(kit: BrandKit): BrandKit {
+  return {
+    ...kit,
+    taglines: cleanStringList(kit.taglines),
+    adContact: cleanAdContact(kit.adContact),
+    finePrint: cleanStringList(kit.finePrint),
+    approvedHeadlines: cleanStringList(kit.approvedHeadlines),
+  };
+}
+
 async function writeProjectFile(
   rootPath: string,
   project: VibeforgeProject,
@@ -117,7 +169,7 @@ export async function createProject(input: NewProjectInput): Promise<ProjectAndB
   }
 
   const now = new Date().toISOString();
-  const brandKit: BrandKit = {
+  const brandKit: BrandKit = normalizeBrandKit({
     id: uuidv4(),
     businessName: input.businessName,
     website: input.website,
@@ -131,7 +183,7 @@ export async function createProject(input: NewProjectInput): Promise<ProjectAndB
     approved: false,
     createdAt: now,
     updatedAt: now,
-  };
+  });
 
   const project: VibeforgeProject = {
     id: uuidv4(),
@@ -159,7 +211,9 @@ export async function openProject(rootPath: string): Promise<ProjectAndBrandKit>
   const contents = JSON.parse(raw) as ProjectFileContents;
   const project: VibeforgeProject = { ...contents.project, rootPath };
   await touchRecentProject(project);
-  return { project, brandKit: contents.brandKit };
+  // Load path only: normalizes in memory so legacy projects get the v2
+  // defaults. Deliberately does NOT write back here — see normalizeBrandKit.
+  return { project, brandKit: normalizeBrandKit(contents.brandKit) };
 }
 
 export async function saveProject(project: VibeforgeProject, brandKit: BrandKit): Promise<void> {
@@ -169,4 +223,131 @@ export async function saveProject(project: VibeforgeProject, brandKit: BrandKit)
   const updated: VibeforgeProject = { ...project, updatedAt: new Date().toISOString() };
   await writeProjectFile(project.rootPath, updated, brandKit);
   await touchRecentProject(updated);
+}
+
+// ── Asset import / image read (Brand Kit v2) ─────────────────────
+
+export const IMPORTABLE_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg"] as const;
+export const ASSET_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+
+const IMAGE_MIME: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+};
+
+const KIND_SUBFOLDER: Record<SourceAsset["kind"], string> = {
+  logo: "source/logos",
+  photo: "source/photos",
+  screenshot: "source/screenshots",
+  other: "source/photos",
+};
+
+// Lazy-loaded sharp (dynamic import - ESM-only package in CJS context)
+let sharpInstance: any = null;
+async function getSharp(): Promise<any> {
+  if (!sharpInstance) {
+    sharpInstance = (await import("sharp")).default;
+  }
+  return sharpInstance;
+}
+
+function extensionOf(filePath: string): string {
+  return path.extname(filePath).replace(/^\./, "").toLowerCase();
+}
+
+/**
+ * Resolve a project-relative asset path to an absolute one, refusing anything
+ * that escapes the project folder (absolute paths, ".." traversal, other drives).
+ */
+export function resolveProjectAssetPath(rootPath: string, relativePath: string): string {
+  if (!rootPath) {
+    throw new Error("Project has no root path.");
+  }
+  if (!relativePath || path.isAbsolute(relativePath)) {
+    throw new Error("Asset path must be relative to the project folder.");
+  }
+  const absRoot = path.resolve(rootPath);
+  const abs = path.resolve(absRoot, relativePath);
+  const rootWithSep = absRoot.endsWith(path.sep) ? absRoot : absRoot + path.sep;
+  if (abs !== absRoot && !abs.startsWith(rootWithSep)) {
+    throw new Error("Asset path is outside the project folder.");
+  }
+  return abs;
+}
+
+/**
+ * Copy a user-selected file into the project folder and return the SourceAsset
+ * describing it. The source file is never modified or deleted.
+ */
+export async function importAssetIntoProject(
+  rootPath: string,
+  sourceFilePath: string,
+  kind: SourceAsset["kind"] = "logo"
+): Promise<SourceAsset> {
+  const ext = extensionOf(sourceFilePath);
+  if (!(IMPORTABLE_IMAGE_EXTENSIONS as readonly string[]).includes(ext)) {
+    throw new Error(
+      `Unsupported file type ".${ext}". Allowed: ${IMPORTABLE_IMAGE_EXTENSIONS.join(", ")}.`
+    );
+  }
+
+  const stat = await fs.stat(sourceFilePath);
+  if (!stat.isFile()) {
+    throw new Error("That path is not a file.");
+  }
+  if (stat.size > ASSET_IMPORT_MAX_BYTES) {
+    const mb = Math.round(ASSET_IMPORT_MAX_BYTES / (1024 * 1024));
+    throw new Error(`File is larger than ${mb} MB.`);
+  }
+
+  const id = uuidv4();
+  const safeName = path.basename(sourceFilePath).replace(/[^a-zA-Z0-9._-]/g, "_");
+  const relativePath = `${KIND_SUBFOLDER[kind]}/${id}-${safeName}`.split(path.sep).join("/");
+
+  const destination = resolveProjectAssetPath(rootPath, relativePath);
+  await fs.mkdir(path.dirname(destination), { recursive: true });
+  await fs.copyFile(sourceFilePath, destination);
+
+  // Dimensions are best-effort: a malformed SVG simply gets no width/height.
+  let width: number | undefined;
+  let height: number | undefined;
+  try {
+    const sharp = await getSharp();
+    const meta = await sharp(destination).metadata();
+    if (typeof meta.width === "number") width = meta.width;
+    if (typeof meta.height === "number") height = meta.height;
+  } catch {
+    // leave undefined
+  }
+
+  return {
+    id,
+    relativePath,
+    originalFileName: path.basename(sourceFilePath),
+    kind,
+    ...(width !== undefined ? { width } : {}),
+    ...(height !== undefined ? { height } : {}),
+    addedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Read a project-relative image and return it as a data URI. This is the one
+ * representation that loads in both the renderer (<img src>) and the Puppeteer
+ * export HTML, with no custom protocol or webSecurity changes.
+ */
+export async function readProjectImageAsDataUri(
+  rootPath: string,
+  relativePath: string
+): Promise<string> {
+  const absolute = resolveProjectAssetPath(rootPath, relativePath);
+  const mime = IMAGE_MIME[extensionOf(absolute)];
+  if (!mime) {
+    throw new Error(`Unsupported image type ".${extensionOf(absolute)}".`);
+  }
+  const buffer = await fs.readFile(absolute);
+  return `data:${mime};base64,${buffer.toString("base64")}`;
 }
